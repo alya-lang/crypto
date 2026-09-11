@@ -1,63 +1,17 @@
 # Entropy and Randomness Utilities
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-import "../encodings/hex.alya"
+import "rand" as rand
 
 function random_bytes(count)
-    let bytes = []
-    let i = 0
-    while i < count
-        let r = rand()
-        if r < 0
-            r = 0 - r
-        end
-        let b = bit_and(r, 255)
-        bytes.push(b)
-        i += 1
-    end
-    return bytes
+    return rand::bytes(count)
 end
 
 function random_hex(count)
-    let bytes = random_bytes(count)
-    return bytes_to_hex(bytes)
+    return rand::hex(count * 2)
 end
 
 function random_uuid()
-    let bytes = random_bytes(16)
-    # RFC 4122 version 4: set bits 4-7 of byte 6 to 0100 (4)
-    bytes[6] = bit_or(bit_and(bytes[6], 15), 64)
-    # RFC 4122 variant 1: set bits 6-7 of byte 8 to 10
-    bytes[8] = bit_or(bit_and(bytes[8], 63), 128)
-
-    let hex_chars = "0123456789abcdef"
-    let parts = [
-        [0, 4],
-        [4, 6],
-        [6, 8],
-        [8, 10],
-        [10, 16]
-    ]
-
-    let res = ""
-    let p = 0
-    while p < len(parts)
-        if p > 0
-            res = res + "-"
-        end
-        let range = parts[p]
-        let start_idx = range[0]
-        let end_idx = range[1]
-        let i = start_idx
-        while i < end_idx
-            let b = bytes[i]
-            let hi = bit_and(bit_shr(b, 4), 15)
-            let lo = bit_and(b, 15)
-            res = res + char_at(hex_chars, hi) + char_at(hex_chars, lo)
-            i += 1
-        end
-        p += 1
-    end
-
-    return res
+    return rand::uuid_v4()
 end
+
