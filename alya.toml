@@ -1,0 +1,13 @@
+[package]
+name = "crypto"
+version = "0.1.0"
+alya-version = "0.0.6"
+entry = "src/lib.alya"
+description = "Comprehensive cryptography and hashing library for Alya"
+authors = ["Alya Language Contributors <https://github.com/alya-lang>"]
+license = "MIT"
+homepage = "https://github.com/alya-lang/alya"
+repository = "https://github.com/alya-lang/crypto"
+keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "sha256", "hmac"]
+
+[dependencies]
