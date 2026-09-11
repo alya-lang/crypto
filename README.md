@@ -12,7 +12,6 @@ Comprehensive cryptography and hashing library for Alya.
 ## 🌟 Features
 
 - ⚡ **Lightweight & High Performance**: 180k+ SHA-256 ops/sec, 500k+ Base64 ops/sec in pure Alya
-- 📦 **Zero Dependencies**: Pure, standard-compliant implementations with zero external libraries
 - 🔒 **Cryptographic Hash Functions**: SHA-256, SHA-224, SHA-1, MD5
 - 🔑 **Message Authentication Codes**: HMAC (HMAC-SHA256, HMAC-SHA1, HMAC-MD5)
 - 🛡️ **Key Derivation (KDF)**: RFC 2898 PBKDF2-HMAC-SHA256 for secure password storage
@@ -174,6 +173,23 @@ alyac run benches/bench_basic.alya
 # Run demo
 alyac run examples/demo.alya
 ```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository and clone it locally
+2. Install dependencies:
+   ```bash
+   alyac install
+   ```
+3. Create your feature branch (`git checkout -b feature/my-feature`)
+4. Verify tests and formatting before opening a PR:
+   ```bash
+   alyac test
+   alyac fmt . --check
+   ```
+5. Commit your changes (`git commit -m "feat: add feature"`) and open a Pull Request
 
 ---
 
