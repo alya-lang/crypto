@@ -63,13 +63,13 @@ Add `crypto` to your `alya.toml`:
 
 ```toml
 [dependencies]
-crypto = { git = "https://github.com/alya-lang/crypto", tag = "v0.1.0" }
+crypto = { git = "https://github.com/alya-lang/crypto", branch = "main" }
 ```
 
 Or install it directly via CLI:
 
 ```bash
-alyac add crypto --git https://github.com/alya-lang/crypto --tag v0.1.0
+alyac add crypto --git https://github.com/alya-lang/crypto --branch main
 alyac install
 ```
 
