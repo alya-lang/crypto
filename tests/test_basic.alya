@@ -1,28 +1,86 @@
-# Test suite for crypto
+# Test suite for crypto package
 import "std/test"
-import "../src/lib.alya" as pkg
+import "../src/lib.alya" as crypto
 
 function main()
-    test_suite("crypto Test Suite")
+    test_suite("crypto Package Test Suite")
     let r = runner_new()
 
-    # 1. Basic facade function
-    let res = pkg::hello("Alya")
-    runner_assert_str_eq(r, res, "Hello, Alya!", "pkg::hello returns formatted greeting")
+    # --- 1. Hex Encodings ---
+    let h_enc = crypto::hex_encode("hello")
+    runner_assert_str_eq(r, h_enc, "68656c6c6f", "hex_encode('hello') -> 68656c6c6f")
+    let h_dec = crypto::hex_decode("68656c6c6f")
+    runner_assert_str_eq(r, h_dec, "hello", "hex_decode('68656c6c6f') -> hello")
+    runner_assert_eq(r, crypto::is_hex("68656c6c6f"), 1, "is_hex valid")
+    runner_assert_eq(r, crypto::is_hex("68656z"), 0, "is_hex invalid")
 
-    # 2. Default parameter
-    let default_res = pkg::hello()
-    runner_assert_str_eq(r, default_res, "Hello, World!", "pkg::hello() uses default name")
+    # --- 2. Base64 Encodings ---
+    let b64_enc = crypto::base64_encode("hello world")
+    runner_assert_str_eq(r, b64_enc, "aGVsbG8gd29ybGQ=", "base64_encode('hello world')")
+    let b64_dec = crypto::base64_decode("aGVsbG8gd29ybGQ=")
+    runner_assert_str_eq(r, b64_dec, "hello world", "base64_decode('aGVsbG8gd29ybGQ=')")
+    runner_assert_eq(r, crypto::is_base64("aGVsbG8gd29ybGQ="), 1, "is_base64 valid")
 
-    # 3. Modular types & config constructor
-    let cfg = pkg::new_config("Community", 3)
-    runner_assert_str_eq(r, cfg.name, "Community", "pkg::new_config sets name correctly")
-    runner_assert_str_eq(r, cfg.prefix, "Hello", "pkg::new_config sets default prefix")
-    runner_assert_eq(r, cfg.count, 3, "pkg::new_config sets count correctly")
+    # --- 3. Base64URL Encodings ---
+    let b64u_enc = crypto::base64url_encode("hello world")
+    runner_assert_str_eq(r, b64u_enc, "aGVsbG8gd29ybGQ", "base64url_encode without padding")
+    let b64u_dec = crypto::base64url_decode("aGVsbG8gd29ybGQ")
+    runner_assert_str_eq(r, b64u_dec, "hello world", "base64url_decode")
 
-    # 4. Core custom formatter using struct
-    let custom_res = pkg::core_format_custom(cfg)
-    runner_assert_str_eq(r, custom_res, "Hello, Community!", "pkg::core_format_custom formats using config")
+    # --- 4. SHA-256 Hashes ---
+    let s256_empty = crypto::sha256("")
+    runner_assert_str_eq(r, s256_empty, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sha256 empty string")
+
+    let s256_fox = crypto::sha256("The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, s256_fox, "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592", "sha256 standard fox vector")
+
+    # --- 5. SHA-224 Hashes ---
+    let s224_empty = crypto::sha224("")
+    runner_assert_str_eq(r, s224_empty, "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f", "sha224 empty string")
+
+    let s224_fox = crypto::sha224("The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, s224_fox, "730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525", "sha224 standard fox vector")
+
+    # --- 6. SHA-1 Hashes ---
+    let s1_empty = crypto::sha1("")
+    runner_assert_str_eq(r, s1_empty, "da39a3ee5e6b4b0d3255bfef95601890afd80709", "sha1 empty string")
+
+    let s1_fox = crypto::sha1("The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, s1_fox, "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12", "sha1 standard fox vector")
+
+    # --- 7. MD5 Hashes ---
+    let md5_empty = crypto::md5("")
+    runner_assert_str_eq(r, md5_empty, "d41d8cd98f00b204e9800998ecf8427e", "md5 empty string")
+
+    let md5_fox = crypto::md5("The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, md5_fox, "9e107d9d372bb6826bd81d3542a419d6", "md5 standard fox vector")
+
+    # --- 8. HMAC Message Authentication ---
+    let hmac_256 = crypto::hmac_sha256("key", "The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, hmac_256, "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8", "hmac_sha256 standard vector")
+
+    let hmac_1 = crypto::hmac_sha1("key", "The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, hmac_1, "de7c9b85b8b78aa6bc8a7a36f70a90701c9db4d9", "hmac_sha1 standard vector")
+
+    let hmac_5 = crypto::hmac_md5("key", "The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, hmac_5, "80070713463e7749b90c2dc24911e275", "hmac_md5 standard vector")
+
+    # --- 9. Timing Attack Prevention ---
+    runner_assert_eq(r, crypto::constant_time_eq("secret_hash", "secret_hash"), 1, "constant_time_eq matching")
+    runner_assert_eq(r, crypto::constant_time_eq("secret_hash", "secret_hase"), 0, "constant_time_eq mismatch")
+    runner_assert_eq(r, crypto::constant_time_eq("short", "longer_one"), 0, "constant_time_eq length mismatch")
+
+    # --- 10. PBKDF2 Key Derivation ---
+    let pbkdf2_res = crypto::pbkdf2_hmac_sha256("password", "salt", 1, 32)
+    runner_assert_str_eq(r, pbkdf2_res, "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b", "pbkdf2_hmac_sha256 RFC 6070 vector")
+
+    # --- 11. Random & Entropy ---
+    let rnd_bytes = crypto::random_bytes(16)
+    runner_assert_eq(r, len(rnd_bytes), 16, "random_bytes count")
+    let rnd_hex = crypto::random_hex(16)
+    runner_assert_eq(r, len(rnd_hex), 32, "random_hex length")
+    let uuid = crypto::random_uuid()
+    runner_assert_eq(r, len(uuid), 36, "random_uuid length is 36")
 
     let failed = runner_summary(r)
     if failed > 0

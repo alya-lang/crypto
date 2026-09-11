@@ -1,0 +1,220 @@
+# Keyed-Hashing for Message Authentication (HMAC - RFC 2104)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../encodings/hex.alya"
+import "../hashes/sha256.alya"
+import "../hashes/sha1.alya"
+import "../hashes/md5.alya"
+
+# --- HMAC-SHA256 ---
+
+function hmac_sha256_bytes(key_bytes, msg_bytes)
+    let k = []
+    let klen = len(key_bytes)
+
+    if klen > 64
+        k = sha256_bytes(key_bytes)
+    else
+        let i = 0
+        while i < klen
+            k.push(key_bytes[i])
+            i += 1
+        end
+    end
+
+    while len(k) < 64
+        k.push(0)
+    end
+
+    let k_ipad = []
+    let k_opad = []
+    let i = 0
+    while i < 64
+        let b = k[i]
+        k_ipad.push(bit_xor(b, 54))
+        k_opad.push(bit_xor(b, 92))
+        i += 1
+    end
+
+    let inner_data = []
+    i = 0
+    while i < 64
+        inner_data.push(k_ipad[i])
+        i += 1
+    end
+    let j = 0
+    let mlen = len(msg_bytes)
+    while j < mlen
+        inner_data.push(msg_bytes[j])
+        j += 1
+    end
+
+    let inner_hash = sha256_bytes(inner_data)
+
+    let outer_data = []
+    i = 0
+    while i < 64
+        outer_data.push(k_opad[i])
+        i += 1
+    end
+    j = 0
+    while j < 32
+        outer_data.push(inner_hash[j])
+        j += 1
+    end
+
+    return sha256_bytes(outer_data)
+end
+
+function hmac_sha256_hex(key_str, msg_str)
+    let k_bytes = str_to_bytes(key_str)
+    let m_bytes = str_to_bytes(msg_str)
+    let digest = hmac_sha256_bytes(k_bytes, m_bytes)
+    return bytes_to_hex(digest)
+end
+
+function hmac_sha256(key_str, msg_str)
+    return hmac_sha256_hex(key_str, msg_str)
+end
+
+# --- HMAC-SHA1 ---
+
+function hmac_sha1_bytes(key_bytes, msg_bytes)
+    let k = []
+    let klen = len(key_bytes)
+
+    if klen > 64
+        k = sha1_bytes(key_bytes)
+    else
+        let i = 0
+        while i < klen
+            k.push(key_bytes[i])
+            i += 1
+        end
+    end
+
+    while len(k) < 64
+        k.push(0)
+    end
+
+    let k_ipad = []
+    let k_opad = []
+    let i = 0
+    while i < 64
+        let b = k[i]
+        k_ipad.push(bit_xor(b, 54))
+        k_opad.push(bit_xor(b, 92))
+        i += 1
+    end
+
+    let inner_data = []
+    i = 0
+    while i < 64
+        inner_data.push(k_ipad[i])
+        i += 1
+    end
+    let j = 0
+    let mlen = len(msg_bytes)
+    while j < mlen
+        inner_data.push(msg_bytes[j])
+        j += 1
+    end
+
+    let inner_hash = sha1_bytes(inner_data)
+
+    let outer_data = []
+    i = 0
+    while i < 64
+        outer_data.push(k_opad[i])
+        i += 1
+    end
+    j = 0
+    while j < 20
+        outer_data.push(inner_hash[j])
+        j += 1
+    end
+
+    return sha1_bytes(outer_data)
+end
+
+function hmac_sha1_hex(key_str, msg_str)
+    let k_bytes = str_to_bytes(key_str)
+    let m_bytes = str_to_bytes(msg_str)
+    let digest = hmac_sha1_bytes(k_bytes, m_bytes)
+    return bytes_to_hex(digest)
+end
+
+function hmac_sha1(key_str, msg_str)
+    return hmac_sha1_hex(key_str, msg_str)
+end
+
+# --- HMAC-MD5 ---
+
+function hmac_md5_bytes(key_bytes, msg_bytes)
+    let k = []
+    let klen = len(key_bytes)
+
+    if klen > 64
+        k = md5_bytes(key_bytes)
+    else
+        let i = 0
+        while i < klen
+            k.push(key_bytes[i])
+            i += 1
+        end
+    end
+
+    while len(k) < 64
+        k.push(0)
+    end
+
+    let k_ipad = []
+    let k_opad = []
+    let i = 0
+    while i < 64
+        let b = k[i]
+        k_ipad.push(bit_xor(b, 54))
+        k_opad.push(bit_xor(b, 92))
+        i += 1
+    end
+
+    let inner_data = []
+    i = 0
+    while i < 64
+        inner_data.push(k_ipad[i])
+        i += 1
+    end
+    let j = 0
+    let mlen = len(msg_bytes)
+    while j < mlen
+        inner_data.push(msg_bytes[j])
+        j += 1
+    end
+
+    let inner_hash = md5_bytes(inner_data)
+
+    let outer_data = []
+    i = 0
+    while i < 64
+        outer_data.push(k_opad[i])
+        i += 1
+    end
+    j = 0
+    while j < 16
+        outer_data.push(inner_hash[j])
+        j += 1
+    end
+
+    return md5_bytes(outer_data)
+end
+
+function hmac_md5_hex(key_str, msg_str)
+    let k_bytes = str_to_bytes(key_str)
+    let m_bytes = str_to_bytes(msg_str)
+    let digest = hmac_md5_bytes(k_bytes, m_bytes)
+    return bytes_to_hex(digest)
+end
+
+function hmac_md5(key_str, msg_str)
+    return hmac_md5_hex(key_str, msg_str)
+end

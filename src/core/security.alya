@@ -1,0 +1,34 @@
+# Timing attack prevention utilities
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+# Constant-time comparison for strings (prevents timing side-channel attacks)
+function constant_time_eq(a, b)
+    let alen = len(a)
+    let blen = len(b)
+    if alen != blen
+        return 0
+    end
+    let diff = 0
+    let i = 0
+    while i < alen
+        diff = bit_or(diff, bit_xor(ord(char_at(a, i)), ord(char_at(b, i))))
+        i += 1
+    end
+    return diff == 0
+end
+
+# Constant-time comparison for byte arrays
+function constant_time_eq_bytes(a, b)
+    let alen = len(a)
+    let blen = len(b)
+    if alen != blen
+        return 0
+    end
+    let diff = 0
+    let i = 0
+    while i < alen
+        diff = bit_or(diff, bit_xor(a[i], b[i]))
+        i += 1
+    end
+    return diff == 0
+end

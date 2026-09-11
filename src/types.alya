@@ -2,15 +2,15 @@
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 struct CryptoConfig
-    name
-    prefix
-    count
+    encoding
+    iterations
+    key_len
 end
 
-function make_config(name = "World", count = 1)
+function default_crypto_config()
     return CryptoConfig {
-        name: name,
-        prefix: "Hello",
-        count: count
+        encoding: "hex",
+        iterations: 10000,
+        key_len: 32
     }
 end

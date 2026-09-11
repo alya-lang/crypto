@@ -1,0 +1,150 @@
+# MD5 Message-Digest Algorithm (RFC 1321)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../encodings/hex.alya"
+import "../core/bits.alya"
+
+function _md5_s()
+    return [
+        7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
+        5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
+        4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
+        6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21
+    ]
+end
+
+function _md5_k()
+    return [
+        3614090360, 3905402710,  606105819, 3250441966, 4118548399, 1200080426, 2821735955, 4249261313,
+        1770035416, 2336552879, 4294925233, 2304563134, 1804603682, 4254626195, 2792965006, 1236535329,
+        4129170786, 3225465664,  643717713, 3921069994, 3593408605,   38016083, 3634488961, 3889429448,
+        568446438, 3275163606, 4107603335, 1163531501, 2850285829, 4243563512, 1735328473, 2368359562,
+        4294588738, 2272392833, 1839030562, 4259657740, 2763975236, 1272893353, 4139469664, 3200236656,
+        681279174, 3936430074, 3572445317,   76029189, 3654602809, 3873151461,  530742520, 3299628645,
+        4096336452, 1126891415, 2878612391, 4237533241, 1700485571, 2399980690, 4293915773, 2240044497,
+        1873313359, 4264355552, 2734768916, 1309151649, 4149444226, 3174756917,  718787259, 3951481745
+    ]
+end
+
+function md5_bytes(data_bytes)
+    let msg_len = len(data_bytes)
+    let total_bits = msg_len * 8
+
+    # 1. Pad message
+    let bytes = []
+    let i = 0
+    while i < msg_len
+        bytes.push(data_bytes[i])
+        i += 1
+    end
+
+    bytes.push(128) # 0x80
+
+    while len(bytes) % 64 != 56
+        bytes.push(0)
+    end
+
+    # Little-endian 64-bit length
+    bytes.push(bit_and(total_bits, 255))
+    bytes.push(bit_and(bit_shr(total_bits, 8), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 16), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 24), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 32), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 40), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 48), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 56), 255))
+
+    # 2. Initial variables
+    let a0 = 1732584193 # 0x67452301
+    let b0 = 4023233417 # 0xefcdab89
+    let c0 = 2562383102 # 0x98badcfe
+    let d0 = 271733878  # 0x10325476
+
+    let s = _md5_s()
+    let k = _md5_k()
+
+    let num_blocks = len(bytes) / 64
+    let block_idx = 0
+
+    while block_idx < num_blocks
+        let offset = block_idx * 64
+        let m = []
+
+        let t = 0
+        while t < 16
+            let p = offset + t * 4
+            let w0 = bytes[p]
+            let w1 = bytes[p + 1]
+            let w2 = bytes[p + 2]
+            let w3 = bytes[p + 3]
+            let word = bit_or(w0, bit_or(bit_shl(w1, 8), bit_or(bit_shl(w2, 16), bit_shl(w3, 24))))
+            m.push(word)
+            t += 1
+        end
+
+        let a = a0
+        let b = b0
+        let c = c0
+        let d = d0
+
+        let j = 0
+        while j < 64
+            let f = 0
+            let g = 0
+            if j < 16
+                let not_b = bit_xor(b, 4294967295)
+                f = bit_or(bit_and(b, c), bit_and(not_b, d))
+                g = j
+            elif j < 32
+                let not_d = bit_xor(d, 4294967295)
+                f = bit_or(bit_and(d, b), bit_and(not_d, c))
+                g = (5 * j + 1) % 16
+            elif j < 48
+                f = bit_xor(b, bit_xor(c, d))
+                g = (3 * j + 5) % 16
+            else
+                let not_d = bit_xor(d, 4294967295)
+                f = bit_xor(c, bit_or(b, not_d))
+                g = (7 * j) % 16
+            end
+
+            let temp_f = bit_and(f + a + k[j] + m[g], 4294967295)
+            a = d
+            d = c
+            c = b
+            b = bit_and(b + rotl32(temp_f, s[j]), 4294967295)
+            j += 1
+        end
+
+        a0 = bit_and(a0 + a, 4294967295)
+        b0 = bit_and(b0 + b, 4294967295)
+        c0 = bit_and(c0 + c, 4294967295)
+        d0 = bit_and(d0 + d, 4294967295)
+
+        block_idx += 1
+    end
+
+    let out = []
+    let words = [a0, b0, c0, d0]
+    let wi = 0
+    while wi < 4
+        let val = words[wi]
+        out.push(bit_and(val, 255))
+        out.push(bit_and(bit_shr(val, 8), 255))
+        out.push(bit_and(bit_shr(val, 16), 255))
+        out.push(bit_and(bit_shr(val, 24), 255))
+        wi += 1
+    end
+
+    return out
+end
+
+function md5_hex(msg)
+    let bytes = str_to_bytes(msg)
+    let digest = md5_bytes(bytes)
+    return bytes_to_hex(digest)
+end
+
+function md5(msg)
+    return md5_hex(msg)
+end

@@ -1,0 +1,92 @@
+# Hexadecimal encoding and decoding utilities
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+function str_to_bytes(s)
+    let slen = len(s)
+    let bytes = []
+    let i = 0
+    while i < slen
+        bytes.push(ord(char_at(s, i)))
+        i += 1
+    end
+    return bytes
+end
+
+function bytes_to_str(bytes)
+    let blen = len(bytes)
+    let res = ""
+    let i = 0
+    while i < blen
+        res = res + chr(bytes[i])
+        i += 1
+    end
+    return res
+end
+
+function bytes_to_hex(bytes)
+    let hex_chars = "0123456789abcdef"
+    let blen = len(bytes)
+    let res = ""
+    let i = 0
+    while i < blen
+        let b = bytes[i]
+        let hi = bit_and(bit_shr(b, 4), 15)
+        let lo = bit_and(b, 15)
+        res = res + char_at(hex_chars, hi) + char_at(hex_chars, lo)
+        i += 1
+    end
+    return res
+end
+
+function _hex_val(ch)
+    let c = ord(ch)
+    when c
+        is 48..57 then return c - 48
+        is 97..102 then return c - 87
+        is 65..70 then return c - 55
+        else return 0
+    end
+end
+
+function hex_to_bytes(s)
+    let slen = len(s)
+    let bytes = []
+    let i = 0
+    while i + 1 < slen
+        let hi = _hex_val(char_at(s, i))
+        let lo = _hex_val(char_at(s, i + 1))
+        let b = bit_or(bit_shl(hi, 4), lo)
+        bytes.push(b)
+        i += 2
+    end
+    return bytes
+end
+
+function hex_encode(s)
+    let bytes = str_to_bytes(s)
+    return bytes_to_hex(bytes)
+end
+
+function hex_decode(s)
+    let bytes = hex_to_bytes(s)
+    return bytes_to_str(bytes)
+end
+
+function is_hex(s)
+    let slen = len(s)
+    if slen == 0 or slen % 2 != 0
+        return 0
+    end
+    let i = 0
+    while i < slen
+        let c = ord(char_at(s, i))
+        let is_d = c >= 48 and c <= 57
+        let is_l = c >= 97 and c <= 102
+        let is_u = c >= 65 and c <= 70
+        if not is_d and not is_l and not is_u
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end

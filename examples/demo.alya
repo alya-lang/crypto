@@ -1,15 +1,48 @@
-# Example usage of crypto
-import "../src/lib.alya" as pkg
+# Comprehensive demonstration of crypto package
+import "../src/lib.alya" as crypto
 
 function main()
-    # Basic greeting
-    let msg = pkg::hello("Alya Developer")
-    say msg
+    say "=== Alya Cryptography & Hashing Library Demo ==="
+    say ""
 
-    # Using configuration struct
-    let cfg = pkg::new_config("Modular Architecture", 5)
-    say "Target: " + cfg.name
-    say "Formatted: " + pkg::core_format_custom(cfg)
+    # 1. Hashing Algorithms
+    let message = "Hello, Alya Ecosystem!"
+    say "Message: " + message
+    say "SHA-256 : " + crypto::sha256(message)
+    say "SHA-224 : " + crypto::sha224(message)
+    say "SHA-1   : " + crypto::sha1(message)
+    say "MD5     : " + crypto::md5(message)
+    say ""
+
+    # 2. Encodings
+    say "--- Encodings ---"
+    let hex_val = crypto::hex_encode(message)
+    say "Hex       : " + hex_val
+    say "Base64    : " + crypto::base64_encode(message)
+    say "Base64URL : " + crypto::base64url_encode(message)
+    say ""
+
+    # 3. Message Authentication (HMAC)
+    say "--- HMAC Signatures ---"
+    let secret_key = "super-secret-key"
+    say "HMAC-SHA256 : " + crypto::hmac_sha256(secret_key, message)
+    say "HMAC-SHA1   : " + crypto::hmac_sha1(secret_key, message)
+    say "HMAC-MD5    : " + crypto::hmac_md5(secret_key, message)
+    say ""
+
+    # 4. Key Derivation (PBKDF2)
+    say "--- Key Derivation (PBKDF2) ---"
+    let derived = crypto::pbkdf2_hmac_sha256("user-password", "salt-value", 100, 32)
+    say "PBKDF2 (100 iters, 32 bytes) : " + derived
+    say ""
+
+    # 5. Security & Randomness
+    say "--- Security & Randomness ---"
+    say "Random Hex (16 bytes) : " + crypto::random_hex(16)
+    say "Random UUID v4        : " + crypto::random_uuid()
+    say "Constant-time check   : " + crypto::constant_time_eq("token_abc", "token_abc")
+    say ""
+    say "✓ Demo completed successfully!"
 end
 
 main()

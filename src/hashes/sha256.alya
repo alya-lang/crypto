@@ -1,0 +1,183 @@
+# SHA-256 and SHA-224 Cryptographic Hash Functions (FIPS 180-4)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../encodings/hex.alya"
+import "../core/bits.alya"
+
+function _sha256_k()
+    return [
+        1116352408, 1899447441, 3049323471, 3921009573, 961987163, 1508970993, 2453635748, 2870763221,
+        3624381080, 310598401, 607225278, 1426881987, 1925078388, 2162078206, 2614888103, 3248222580,
+        3835390401, 4022224774, 264347078, 604807628, 770255983, 1249150122, 1555081692, 1996064986,
+        2554220882, 2821834349, 2952996808, 3210313671, 3336571891, 3584528711, 113926993, 338241895,
+        666307205, 773529912, 1294757372, 1396182291, 1695183700, 1986661051, 2177026350, 2456956037,
+        2730485921, 2820302411, 3259730800, 3345764771, 3516065817, 3600352804, 4094571909, 275423344,
+        430227734, 506948616, 659060556, 883997877, 958139571, 1322822218, 1537002063, 1747873779,
+        1955562222, 2024104815, 2227730452, 2361852424, 2428436474, 2756734187, 3204031479, 3329325298
+    ]
+end
+
+function _sha256_transform(data_bytes, is_224)
+    let msg_len = len(data_bytes)
+    let total_bits = msg_len * 8
+
+    # 1. Pad message
+    let bytes = []
+    let i = 0
+    while i < msg_len
+        bytes.push(data_bytes[i])
+        i += 1
+    end
+
+    bytes.push(128) # 0x80
+
+    while len(bytes) % 64 != 56
+        bytes.push(0)
+    end
+
+    bytes.push(bit_and(bit_shr(total_bits, 56), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 48), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 40), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 32), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 24), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 16), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 8), 255))
+    bytes.push(bit_and(total_bits, 255))
+
+    # 2. Initialize hash values
+    let k = _sha256_k()
+    let h0, h1, h2, h3, h4, h5, h6, h7 = 0
+    if is_224 == 1
+        h0 = 3238371032
+        h1 = 914150663
+        h2 = 812702999
+        h3 = 4144912697
+        h4 = 4290775857
+        h5 = 1750603025
+        h6 = 1694076839
+        h7 = 3204075428
+    else
+        h0 = 1779033703
+        h1 = 3144134277
+        h2 = 1013904242
+        h3 = 2773480762
+        h4 = 1359893119
+        h5 = 2600822924
+        h6 = 528734635
+        h7 = 1541459225
+    end
+
+    let num_blocks = len(bytes) / 64
+    let block_idx = 0
+
+    while block_idx < num_blocks
+        let offset = block_idx * 64
+        let w = []
+
+        let t = 0
+        while t < 16
+            let p = offset + t * 4
+            let w0 = bytes[p]
+            let w1 = bytes[p + 1]
+            let w2 = bytes[p + 2]
+            let w3 = bytes[p + 3]
+            let word = bit_or(bit_shl(w0, 24), bit_or(bit_shl(w1, 16), bit_or(bit_shl(w2, 8), w3)))
+            w.push(word)
+            t += 1
+        end
+
+        while t < 64
+            let s0 = bit_xor(rotr32(w[t - 15], 7), bit_xor(rotr32(w[t - 15], 18), bit_shr(w[t - 15], 3)))
+            let s1 = bit_xor(rotr32(w[t - 2], 17), bit_xor(rotr32(w[t - 2], 19), bit_shr(w[t - 2], 10)))
+            let word = bit_and(w[t - 16] + s0 + w[t - 7] + s1, 4294967295)
+            w.push(word)
+            t += 1
+        end
+
+        let a = h0
+        let b = h1
+        let c = h2
+        let d = h3
+        let e = h4
+        let f = h5
+        let g = h6
+        let h = h7
+
+        let j = 0
+        while j < 64
+            let s1 = bit_xor(rotr32(e, 6), bit_xor(rotr32(e, 11), rotr32(e, 25)))
+            let ch = bit_xor(g, bit_and(e, bit_xor(f, g)))
+            let temp1 = bit_and(h + s1 + ch + k[j] + w[j], 4294967295)
+            let s0 = bit_xor(rotr32(a, 2), bit_xor(rotr32(a, 13), rotr32(a, 22)))
+            let maj = bit_xor(bit_and(a, b), bit_and(c, bit_xor(a, b)))
+            let temp2 = bit_and(s0 + maj, 4294967295)
+
+            h = g
+            g = f
+            f = e
+            e = bit_and(d + temp1, 4294967295)
+            d = c
+            c = b
+            b = a
+            a = bit_and(temp1 + temp2, 4294967295)
+            j += 1
+        end
+
+        h0 = bit_and(h0 + a, 4294967295)
+        h1 = bit_and(h1 + b, 4294967295)
+        h2 = bit_and(h2 + c, 4294967295)
+        h3 = bit_and(h3 + d, 4294967295)
+        h4 = bit_and(h4 + e, 4294967295)
+        h5 = bit_and(h5 + f, 4294967295)
+        h6 = bit_and(h6 + g, 4294967295)
+        h7 = bit_and(h7 + h, 4294967295)
+
+        block_idx += 1
+    end
+
+    let out = []
+    let words = [h0, h1, h2, h3, h4, h5, h6, h7]
+    let word_count = 8
+    if is_224 == 1
+        word_count = 7
+    end
+    let wi = 0
+    while wi < word_count
+        let val = words[wi]
+        out.push(bit_and(bit_shr(val, 24), 255))
+        out.push(bit_and(bit_shr(val, 16), 255))
+        out.push(bit_and(bit_shr(val, 8), 255))
+        out.push(bit_and(val, 255))
+        wi += 1
+    end
+
+    return out
+end
+
+function sha256_bytes(bytes)
+    return _sha256_transform(bytes, 0)
+end
+
+function sha256_hex(msg)
+    let bytes = str_to_bytes(msg)
+    let digest = sha256_bytes(bytes)
+    return bytes_to_hex(digest)
+end
+
+function sha256(msg)
+    return sha256_hex(msg)
+end
+
+function sha224_bytes(bytes)
+    return _sha256_transform(bytes, 1)
+end
+
+function sha224_hex(msg)
+    let bytes = str_to_bytes(msg)
+    let digest = sha224_bytes(bytes)
+    return bytes_to_hex(digest)
+end
+
+function sha224(msg)
+    return sha224_hex(msg)
+end

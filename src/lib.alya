@@ -1,14 +1,15 @@
-# crypto library
+# Alya Cryptography and Hashing Library
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 import "./types.alya"
-import "./core/formatter.alya"
-
-# Public facade functions
-function hello(name = "World")
-    return core_format_greeting(name)
-end
-
-function new_config(name = "World", count = 1)
-    return make_config(name, count)
-end
+import "./core/bits.alya"
+import "./core/security.alya"
+import "./encodings/hex.alya"
+import "./encodings/base64.alya"
+import "./encodings/base64url.alya"
+import "./hashes/sha256.alya"
+import "./hashes/sha1.alya"
+import "./hashes/md5.alya"
+import "./mac/hmac.alya"
+import "./kdf/pbkdf2.alya"
+import "./random/entropy.alya"

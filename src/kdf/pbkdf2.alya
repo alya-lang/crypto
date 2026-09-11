@@ -1,0 +1,65 @@
+# Password-Based Key Derivation Function 2 (PBKDF2 - RFC 2898 / PKCS #5)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../encodings/hex.alya"
+import "../mac/hmac.alya"
+
+function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
+    let slen = len(salt_bytes)
+    let derived = []
+    let block_index = 1
+
+    while len(derived) < key_len
+        # Initial salt || INT_32_BE(block_index)
+        let block_salt = []
+        let si = 0
+        while si < slen
+            block_salt.push(salt_bytes[si])
+            si += 1
+        end
+        block_salt.push(bit_and(bit_shr(block_index, 24), 255))
+        block_salt.push(bit_and(bit_shr(block_index, 16), 255))
+        block_salt.push(bit_and(bit_shr(block_index, 8), 255))
+        block_salt.push(bit_and(block_index, 255))
+
+        let u_prev = hmac_sha256_bytes(pwd_bytes, block_salt)
+        let u_xor = []
+        let k = 0
+        while k < 32
+            u_xor.push(u_prev[k])
+            k += 1
+        end
+
+        let iter = 1
+        while iter < iterations
+            u_prev = hmac_sha256_bytes(pwd_bytes, u_prev)
+            k = 0
+            while k < 32
+                u_xor[k] = bit_xor(u_xor[k], u_prev[k])
+                k += 1
+            end
+            iter += 1
+        end
+
+        k = 0
+        while k < 32 and len(derived) < key_len
+            derived.push(u_xor[k])
+            k += 1
+        end
+
+        block_index += 1
+    end
+
+    return derived
+end
+
+function pbkdf2_hmac_sha256_hex(password_str, salt_str, iterations, key_len)
+    let pwd_bytes = str_to_bytes(password_str)
+    let salt_bytes = str_to_bytes(salt_str)
+    let bytes = pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
+    return bytes_to_hex(bytes)
+end
+
+function pbkdf2_hmac_sha256(password, salt, iterations, key_len)
+    return pbkdf2_hmac_sha256_hex(password, salt, iterations, key_len)
+end

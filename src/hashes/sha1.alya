@@ -1,0 +1,132 @@
+# SHA-1 Cryptographic Hash Function (FIPS 180-1 / RFC 3174)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../encodings/hex.alya"
+import "../core/bits.alya"
+
+function sha1_bytes(data_bytes)
+    let msg_len = len(data_bytes)
+    let total_bits = msg_len * 8
+
+    # 1. Pad message
+    let bytes = []
+    let i = 0
+    while i < msg_len
+        bytes.push(data_bytes[i])
+        i += 1
+    end
+
+    bytes.push(128) # 0x80
+
+    while len(bytes) % 64 != 56
+        bytes.push(0)
+    end
+
+    bytes.push(bit_and(bit_shr(total_bits, 56), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 48), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 40), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 32), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 24), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 16), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 8), 255))
+    bytes.push(bit_and(total_bits, 255))
+
+    # 2. Initial hash values
+    let h0 = 1732584193 # 0x67452301
+    let h1 = 4023233417 # 0xefcdab89
+    let h2 = 2562383102 # 0x98badcfe
+    let h3 = 271733878  # 0x10325476
+    let h4 = 3285377520 # 0xc3d2e1f0
+
+    let num_blocks = len(bytes) / 64
+    let block_idx = 0
+
+    while block_idx < num_blocks
+        let offset = block_idx * 64
+        let w = []
+
+        let t = 0
+        while t < 16
+            let p = offset + t * 4
+            let w0 = bytes[p]
+            let w1 = bytes[p + 1]
+            let w2 = bytes[p + 2]
+            let w3 = bytes[p + 3]
+            let word = bit_or(bit_shl(w0, 24), bit_or(bit_shl(w1, 16), bit_or(bit_shl(w2, 8), w3)))
+            w.push(word)
+            t += 1
+        end
+
+        while t < 80
+            let xor_val = bit_xor(w[t - 3], bit_xor(w[t - 8], bit_xor(w[t - 14], w[t - 16])))
+            w.push(rotl32(xor_val, 1))
+            t += 1
+        end
+
+        let a = h0
+        let b = h1
+        let c = h2
+        let d = h3
+        let e = h4
+
+        let j = 0
+        while j < 80
+            let f = 0
+            let k = 0
+            if j < 20
+                let not_b = bit_xor(b, 4294967295)
+                f = bit_or(bit_and(b, c), bit_and(not_b, d))
+                k = 1518500249 # 0x5a827999
+            elif j < 40
+                f = bit_xor(b, bit_xor(c, d))
+                k = 1859775393 # 0x6ed9eba1
+            elif j < 60
+                f = bit_or(bit_and(b, c), bit_or(bit_and(b, d), bit_and(c, d)))
+                k = 2400959708 # 0x8f1bbcdc
+            else
+                f = bit_xor(b, bit_xor(c, d))
+                k = 3395469782 # 0xca62c1d6
+            end
+
+            let temp = bit_and(rotl32(a, 5) + f + e + k + w[j], 4294967295)
+            e = d
+            d = c
+            c = rotl32(b, 30)
+            b = a
+            a = temp
+            j += 1
+        end
+
+        h0 = bit_and(h0 + a, 4294967295)
+        h1 = bit_and(h1 + b, 4294967295)
+        h2 = bit_and(h2 + c, 4294967295)
+        h3 = bit_and(h3 + d, 4294967295)
+        h4 = bit_and(h4 + e, 4294967295)
+
+        block_idx += 1
+    end
+
+    let out = []
+    let words = [h0, h1, h2, h3, h4]
+    let wi = 0
+    while wi < 5
+        let val = words[wi]
+        out.push(bit_and(bit_shr(val, 24), 255))
+        out.push(bit_and(bit_shr(val, 16), 255))
+        out.push(bit_and(bit_shr(val, 8), 255))
+        out.push(bit_and(val, 255))
+        wi += 1
+    end
+
+    return out
+end
+
+function sha1_hex(msg)
+    let bytes = str_to_bytes(msg)
+    let digest = sha1_bytes(bytes)
+    return bytes_to_hex(digest)
+end
+
+function sha1(msg)
+    return sha1_hex(msg)
+end
