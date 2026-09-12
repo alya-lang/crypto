@@ -1,6 +1,6 @@
 [package]
 name = "crypto"
-version = "0.1.0"
+version = "0.2.0"
 alya-version = "0.0.9"
 entry = "src/lib.alya"
 description = "Comprehensive cryptography and hashing library for Alya"
@@ -11,4 +11,4 @@ repository = "https://github.com/alya-lang/crypto"
 keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "sha256", "hmac"]
 
 [dependencies]
-rand = { git = "https://github.com/alya-lang/rand", branch = "main" }
+rand = { git = "https://github.com/alya-lang/rand", tag = "v0.1.0" }
