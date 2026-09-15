@@ -159,8 +159,6 @@ function main()
     runner_assert_eq(r, len(rnd_bytes), 16, "random_bytes count")
     let rnd_hex = crypto::random_hex(16)
     runner_assert_eq(r, len(rnd_hex), 32, "random_hex length")
-    let uuid = crypto::random_uuid()
-    runner_assert_eq(r, len(uuid), 36, "random_uuid length is 36")
 
     # --- 18. Poly1305 (RFC 8439) ---
     let poly_key = crypto::hex_to_bytes("85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b")

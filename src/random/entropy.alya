@@ -12,16 +12,3 @@ function random_hex(count)
     let b = random_bytes(count)
     return bytes_to_hex(b)
 end
-
-function random_uuid()
-    let b = random_bytes(16)
-    b[6] = bit_or(bit_and(b[6], 15), 64)  # version 4
-    b[8] = bit_or(bit_and(b[8], 63), 128) # variant RFC 4122
-    let h = bytes_to_hex(b)
-    let p1 = substring(h, 0, 8)
-    let p2 = substring(h, 8, 4)
-    let p3 = substring(h, 12, 4)
-    let p4 = substring(h, 16, 4)
-    let p5 = substring(h, 20, 12)
-    return p1 + "-" + p2 + "-" + p3 + "-" + p4 + "-" + p5
-end
