@@ -1,0 +1,191 @@
+# ChaCha20-Poly1305 Authenticated Encryption with Associated Data (RFC 8439)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "chacha20.alya"
+import "../mac/poly1305.alya"
+import "../core/security.alya"
+import "../encodings/hex.alya"
+
+function _u64_le(val)
+    let b = []
+    let v = val
+    let i = 0
+    while i < 8
+        b.push(bit_and(v, 255))
+        v = bit_shr(v, 8)
+        i += 1
+    end
+    return b
+end
+
+function chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, plaintext_bytes)
+    if len(key_bytes) < 32
+        throw "ChaCha20 key must be 32 bytes"
+    end
+    if len(nonce_bytes) < 12
+        throw "ChaCha20-Poly1305 nonce must be 12 bytes"
+    end
+
+    # 1. Generate Poly1305 key using counter 0
+    let otk_block = chacha20_block(key_bytes, 0, nonce_bytes)
+    let poly_key = []
+    let i = 0
+    while i < 32
+        poly_key.push(otk_block[i])
+        i += 1
+    end
+
+    # 2. Encrypt plaintext with counter 1
+    let ciphertext_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, 1, plaintext_bytes)
+
+    # 3. Construct MAC data:
+    # aad | pad16(aad) | ciphertext | pad16(ciphertext) | len(aad) as u64le | len(ciphertext) as u64le
+    let mac_data = []
+    let alen = len(aad_bytes)
+    i = 0
+    while i < alen
+        mac_data.push(aad_bytes[i])
+        i += 1
+    end
+    if alen % 16 != 0
+        let pad_len = 16 - (alen % 16)
+        let p = 0
+        while p < pad_len
+            mac_data.push(0)
+            p += 1
+        end
+    end
+
+    let clen = len(ciphertext_bytes)
+    i = 0
+    while i < clen
+        mac_data.push(ciphertext_bytes[i])
+        i += 1
+    end
+    if clen % 16 != 0
+        let pad_len = 16 - (clen % 16)
+        let p = 0
+        while p < pad_len
+            mac_data.push(0)
+            p += 1
+        end
+    end
+
+    let alen_bytes = _u64_le(alen)
+    i = 0
+    while i < 8
+        mac_data.push(alen_bytes[i])
+        i += 1
+    end
+
+    let clen_bytes = _u64_le(clen)
+    i = 0
+    while i < 8
+        mac_data.push(clen_bytes[i])
+        i += 1
+    end
+
+    # 4. Compute Poly1305 tag
+    let tag_bytes = poly1305_mac_bytes(mac_data, poly_key)
+
+    return [ciphertext_bytes, tag_bytes]
+end
+
+function chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, ciphertext_bytes, tag_bytes)
+    if len(key_bytes) < 32
+        throw "ChaCha20 key must be 32 bytes"
+    end
+    if len(nonce_bytes) < 12
+        throw "ChaCha20-Poly1305 nonce must be 12 bytes"
+    end
+    if len(tag_bytes) < 16
+        throw "Poly1305 tag must be 16 bytes"
+    end
+
+    # 1. Generate Poly1305 key
+    let otk_block = chacha20_block(key_bytes, 0, nonce_bytes)
+    let poly_key = []
+    let i = 0
+    while i < 32
+        poly_key.push(otk_block[i])
+        i += 1
+    end
+
+    # 2. Reconstruct MAC data
+    let mac_data = []
+    let alen = len(aad_bytes)
+    i = 0
+    while i < alen
+        mac_data.push(aad_bytes[i])
+        i += 1
+    end
+    if alen % 16 != 0
+        let pad_len = 16 - (alen % 16)
+        let p = 0
+        while p < pad_len
+            mac_data.push(0)
+            p += 1
+        end
+    end
+
+    let clen = len(ciphertext_bytes)
+    i = 0
+    while i < clen
+        mac_data.push(ciphertext_bytes[i])
+        i += 1
+    end
+    if clen % 16 != 0
+        let pad_len = 16 - (clen % 16)
+        let p = 0
+        while p < pad_len
+            mac_data.push(0)
+            p += 1
+        end
+    end
+
+    let alen_bytes = _u64_le(alen)
+    i = 0
+    while i < 8
+        mac_data.push(alen_bytes[i])
+        i += 1
+    end
+
+    let clen_bytes = _u64_le(clen)
+    i = 0
+    while i < 8
+        mac_data.push(clen_bytes[i])
+        i += 1
+    end
+
+    # 3. Verify tag in constant time
+    let expected_tag = poly1305_mac_bytes(mac_data, poly_key)
+    let expected_tag_hex = bytes_to_hex(expected_tag)
+    let actual_tag_hex = bytes_to_hex(tag_bytes)
+
+    if not constant_time_eq(expected_tag_hex, actual_tag_hex)
+        throw "ChaCha20-Poly1305 authentication failed: invalid tag"
+    end
+
+    # 4. Decrypt ciphertext with counter 1
+    return chacha20_process_bytes(key_bytes, nonce_bytes, 1, ciphertext_bytes)
+end
+
+function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintext_str)
+    let aad_bytes = str_to_bytes(aad_str)
+    let pt_bytes = str_to_bytes(plaintext_str)
+    let res = chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, pt_bytes)
+    let ct_hex = bytes_to_hex(res[0])
+    let tag_hex = bytes_to_hex(res[1])
+    return {
+        "ciphertext": ct_hex,
+        "tag": tag_hex
+    }
+end
+
+function chacha20_poly1305_decrypt(key_bytes, nonce_bytes, aad_str, ciphertext_hex, tag_hex)
+    let aad_bytes = str_to_bytes(aad_str)
+    let ct_bytes = hex_to_bytes(ciphertext_hex)
+    let tag_bytes = hex_to_bytes(tag_hex)
+    let pt_bytes = chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, ct_bytes, tag_bytes)
+    return bytes_to_str(pt_bytes)
+end

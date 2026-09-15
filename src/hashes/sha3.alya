@@ -1,0 +1,205 @@
+# SHA-3 (FIPS 202) and Keccak Hash Family
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../core/bits.alya"
+import "../encodings/hex.alya"
+
+function _get_keccak_rc()
+    return [
+        u64(0, 1), u64(0, 32898), u64(2147483648, 32906), u64(2147483648, 2147516416),
+        u64(0, 32907), u64(0, 2147483649), u64(2147483648, 2147516545), u64(2147483648, 32777),
+        u64(0, 138), u64(0, 136), u64(0, 2147516425), u64(0, 2147483658),
+        u64(0, 2147516555), u64(2147483648, 139), u64(2147483648, 32905), u64(2147483648, 32771),
+        u64(2147483648, 32770), u64(2147483648, 128), u64(0, 32778), u64(2147483648, 2147483658),
+        u64(2147483648, 2147516545), u64(2147483648, 32896), u64(0, 2147483649), u64(2147483648, 2147516424)
+    ]
+end
+
+function _get_keccak_r()
+    return [
+        0, 36, 3, 41, 18,
+        1, 44, 10, 45, 2,
+        62, 6, 43, 15, 61,
+        28, 55, 25, 21, 56,
+        27, 20, 39, 8, 14
+    ]
+end
+
+function _keccak_f1600(a)
+    let rc = _get_keccak_rc()
+    let r_table = _get_keccak_r()
+
+    let round = 0
+    while round < 24
+        # 1. Theta
+        let c = []
+        let x = 0
+        while x < 5
+            c.push(bit_xor(bit_xor(bit_xor(bit_xor(a[x], a[x + 5]), a[x + 10]), a[x + 15]), a[x + 20]))
+            x += 1
+        end
+
+        let d = []
+        x = 0
+        while x < 5
+            let c_prev = c[(x + 4) % 5]
+            let c_next = rotl64(c[(x + 1) % 5], 1)
+            d.push(bit_xor(c_prev, c_next))
+            x += 1
+        end
+
+        x = 0
+        while x < 5
+            let y = 0
+            while y < 5
+                a[x + y * 5] = bit_xor(a[x + y * 5], d[x])
+                y += 1
+            end
+            x += 1
+        end
+
+        # 2. Rho and Pi
+        let b = []
+        let idx = 0
+        while idx < 25
+            b.push(0)
+            idx += 1
+        end
+
+        x = 0
+        while x < 5
+            let y = 0
+            while y < 5
+                let rot_amount = r_table[x * 5 + y]
+                let rot_val = rotl64(a[x + y * 5], rot_amount)
+                let new_x = y
+                let new_y = (2 * x + 3 * y) % 5
+                b[new_x + new_y * 5] = rot_val
+                y += 1
+            end
+            x += 1
+        end
+
+        # 3. Chi
+        x = 0
+        while x < 5
+            let y = 0
+            while y < 5
+                let b_next1 = b[((x + 1) % 5) + y * 5]
+                let b_next2 = b[((x + 2) % 5) + y * 5]
+                let not_b_next1 = bit_xor(b_next1, -1)
+                a[x + y * 5] = bit_xor(b[x + y * 5], bit_and(not_b_next1, b_next2))
+                y += 1
+            end
+            x += 1
+        end
+
+        # 4. Iota
+        a[0] = bit_xor(a[0], rc[round])
+
+        round += 1
+    end
+end
+
+function _sha3_engine(msg_bytes, rate_bytes, suffix, out_len)
+    let padded = []
+    let mlen = len(msg_bytes)
+    let i = 0
+    while i < mlen
+        padded.push(msg_bytes[i])
+        i += 1
+    end
+
+    # Pad with suffix and 0x80 (10*1 padding)
+    padded.push(suffix)
+    while len(padded) % rate_bytes != (rate_bytes - 1)
+        padded.push(0)
+    end
+    padded.push(128)
+
+    let a = []
+    i = 0
+    while i < 25
+        a.push(0)
+        i += 1
+    end
+
+    let offset = 0
+    let plen = len(padded)
+    while offset < plen
+        let w = 0
+        let words_in_block = rate_bytes / 8
+        while w < words_in_block
+            let b0 = padded[offset + w * 8]
+            let b1 = padded[offset + w * 8 + 1]
+            let b2 = padded[offset + w * 8 + 2]
+            let b3 = padded[offset + w * 8 + 3]
+            let b4 = padded[offset + w * 8 + 4]
+            let b5 = padded[offset + w * 8 + 5]
+            let b6 = padded[offset + w * 8 + 6]
+            let b7 = padded[offset + w * 8 + 7]
+
+            let lo = bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
+            let hi = bit_or(bit_or(b4, bit_shl(b5, 8)), bit_or(bit_shl(b6, 16), bit_shl(b7, 24)))
+            let word64 = bit_or(lo, bit_shl(hi, 32))
+
+            let x = w % 5
+            let y = w / 5
+            a[x + y * 5] = bit_xor(a[x + y * 5], word64)
+            w += 1
+        end
+
+        _keccak_f1600(a)
+        offset += rate_bytes
+    end
+
+    let out = []
+    let w = 0
+    while len(out) < out_len
+        let x = w % 5
+        let y = w / 5
+        let word64 = a[x + y * 5]
+        let byte_idx = 0
+        while byte_idx < 8 and len(out) < out_len
+            out.push(bit_and(word64, 255))
+            word64 = bit_shr(word64, 8)
+            byte_idx += 1
+        end
+        w += 1
+    end
+
+    return out
+end
+
+# SHA3-256 (NIST FIPS 202)
+function sha3_256_bytes(msg_bytes)
+    return _sha3_engine(msg_bytes, 136, 6, 32)
+end
+
+function sha3_256(msg_str)
+    let b = str_to_bytes(msg_str)
+    let res = sha3_256_bytes(b)
+    return bytes_to_hex(res)
+end
+
+# SHA3-512 (NIST FIPS 202)
+function sha3_512_bytes(msg_bytes)
+    return _sha3_engine(msg_bytes, 72, 6, 64)
+end
+
+function sha3_512(msg_str)
+    let b = str_to_bytes(msg_str)
+    let res = sha3_512_bytes(b)
+    return bytes_to_hex(res)
+end
+
+# Keccak-256 (Ethereum / Web3 Standard)
+function keccak_256_bytes(msg_bytes)
+    return _sha3_engine(msg_bytes, 136, 1, 32)
+end
+
+function keccak_256(msg_str)
+    let b = str_to_bytes(msg_str)
+    let res = keccak_256_bytes(b)
+    return bytes_to_hex(res)
+end

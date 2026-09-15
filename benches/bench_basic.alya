@@ -1,9 +1,10 @@
-# Comprehensive Benchmark suite for crypto v0.4.0
+# Comprehensive Benchmark suite for crypto v0.5.0
 import "std/bench"
 import "../src/lib.alya" as crypto
 
 function main()
-    let runner = bench_runner("crypto Micro-Benchmarks v0.4.0")
+    let runner = bench_runner("crypto Micro-Benchmarks v0.5.0")
+
     let msg = "The quick brown fox jumps over the lazy dog"
 
     # 1. SHA-256
@@ -121,6 +122,45 @@ function main()
         hkdf_i += 1
     end
     bench_stop(runner, "hkdf_hex() 500 operations")
+
+    # 13. Poly1305 (RFC 8439)
+    let poly_k = crypto::hex_to_bytes("85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b")
+    bench_start(runner, 2000)
+    let p_i = 0
+    while p_i < 2000
+        crypto::poly1305_mac(msg, poly_k)
+        p_i += 1
+    end
+    bench_stop(runner, "poly1305_mac() 2,000 operations")
+
+    # 14. ChaCha20-Poly1305 AEAD
+    let aead_aad_b = crypto::hex_to_bytes("50515253c0c1c2c3c4c5c6c7")
+    let aead_pt_b = crypto::str_to_bytes(msg)
+    bench_start(runner, 1000)
+    let aead_i = 0
+    while aead_i < 1000
+        crypto::chacha20_poly1305_encrypt_bytes(cc_k, cc_n, aead_aad_b, aead_pt_b)
+        aead_i += 1
+    end
+    bench_stop(runner, "chacha20_poly1305_encrypt() 1,000 operations")
+
+    # 15. BLAKE2s (RFC 7693)
+    bench_start(runner, 2000)
+    let b2s_i = 0
+    while b2s_i < 2000
+        crypto::blake2s(msg)
+        b2s_i += 1
+    end
+    bench_stop(runner, "blake2s() 2,000 hashes")
+
+    # 16. SHA3-256 (FIPS 202)
+    bench_start(runner, 500)
+    let sha3_i = 0
+    while sha3_i < 500
+        crypto::sha3_256(msg)
+        sha3_i += 1
+    end
+    bench_stop(runner, "sha3_256() 500 hashes")
 
     bench_summary(runner)
 end

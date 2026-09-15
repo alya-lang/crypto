@@ -12,11 +12,19 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
 ## 🌟 Features
 
 - ⚡ **Lightweight & High Performance**: 100% pure Alya implementations with zero C dependencies
-- 🔒 **Cryptographic Hash Functions**: SHA-512, SHA-384, SHA-256, SHA-224, SHA-1, MD5
-- 🔑 **Message Authentication Codes**: HMAC (HMAC-SHA512, HMAC-SHA384, HMAC-SHA256, HMAC-SHA1, HMAC-MD5)
-- 🛡️ **Key Derivation (KDF)**:
+- 🔒 **Cryptographic Hash Functions**:
+  - **SHA-2**: SHA-512, SHA-384, SHA-256, SHA-224 (FIPS 180-4)
+  - **SHA-3 / Keccak**: SHA3-256, SHA3-512, Keccak-256 (NIST FIPS 202)
+  - **BLAKE2**: BLAKE2s-256 (RFC 7693)
+  - Legacy / Checksums: SHA-1, MD5
+- 🔑 **Message Authentication Codes & AEAD**:
+  - **HMAC**: HMAC-SHA512, HMAC-SHA384, HMAC-SHA256, HMAC-SHA1, HMAC-MD5
+  - **Poly1305**: One-time universal MAC (RFC 8439)
+  - **ChaCha20-Poly1305**: Authenticated Encryption with Associated Data (AEAD, RFC 8439)
+- 🛡️ **Key Derivation & Passwords**:
   - RFC 5869 **HKDF** (HMAC-based Extract-and-Expand)
-  - RFC 2898 **PBKDF2-HMAC-SHA256** for secure password storage
+  - RFC 2898 **PBKDF2-HMAC-SHA256**
+  - Modular Crypt Format **password_hash** & **password_verify** with automatic salt generation
 - 🗝️ **Symmetric Ciphers**:
   - **AES** (FIPS 197): AES-128 and AES-256 in **CBC** (with PKCS#7 padding) and **CTR** stream mode
   - **ChaCha20** (RFC 8439): 256-bit high-speed stream cipher
@@ -27,7 +35,7 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
   - Base58 (Bitcoin alphanumeric alphabet)
 - ⏱️ **Timing Attack Protection**: Constant-time string and byte equality (`constant_time_eq`)
 - 🎲 **Entropy & Randomness**: Cryptographic UUID v4 and random byte generation
-- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (59 passing tests)
+- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (73 passing tests)
 
 ---
 
@@ -35,7 +43,7 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
 
 ```
 crypto/
-├── alya.toml               # Package manifest (v0.4.0)
+├── alya.toml               # Package manifest (v0.5.0)
 ├── src/
 │   ├── lib.alya            # Central public API export facade
 │   ├── types.alya          # Configuration and data structures
@@ -51,21 +59,26 @@ crypto/
 │   ├── hashes/
 │   │   ├── sha512.alya     # SHA-512 & SHA-384 (FIPS 180-4, 64-bit word architecture)
 │   │   ├── sha256.alya     # SHA-256 & SHA-224 (FIPS 180-4)
+│   │   ├── sha3.alya       # SHA3-256, SHA3-512, Keccak-256 (FIPS 202)
+│   │   ├── blake2s.alya    # BLAKE2s-256 (RFC 7693)
 │   │   ├── sha1.alya       # SHA-1 (RFC 3174)
 │   │   └── md5.alya        # MD5 (RFC 1321)
 │   ├── mac/
-│   │   └── hmac.alya       # HMAC (SHA-512, SHA-384, SHA-256, SHA-1, MD5)
+│   │   ├── hmac.alya       # HMAC (SHA-512, SHA-384, SHA-256, SHA-1, MD5)
+│   │   └── poly1305.alya   # Poly1305 one-time authenticator (RFC 8439)
 │   ├── kdf/
 │   │   ├── hkdf.alya       # HKDF Extract-and-Expand (RFC 5869)
-│   │   └── pbkdf2.alya     # PBKDF2-HMAC-SHA256 (RFC 2898)
+│   │   ├── pbkdf2.alya     # PBKDF2-HMAC-SHA256 (RFC 2898)
+│   │   └── password.alya   # Modular crypt password hashing & verification
 │   ├── ciphers/
 │   │   ├── aes.alya        # AES-128 & AES-256 with CBC (PKCS#7) and CTR modes
 │   │   ├── chacha20.alya   # ChaCha20 stream cipher (RFC 8439)
+│   │   ├── chacha20poly1305.alya # ChaCha20-Poly1305 AEAD cipher (RFC 8439)
 │   │   └── rc4.alya        # RC4 stream cipher
 │   └── random/
 │       └── entropy.alya    # UUID v4 and random byte generator
 ├── tests/
-│   └── test_basic.alya     # Comprehensive test suite (59 NIST/RFC vectors)
+│   └── test_basic.alya     # Comprehensive test suite (73 NIST/RFC vectors)
 └── benches/
     └── bench_basic.alya    # Micro-benchmarks
 ```

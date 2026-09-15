@@ -1,0 +1,219 @@
+# Poly1305 One-Time Authenticator (RFC 8439)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../core/bits.alya"
+import "../core/security.alya"
+import "../encodings/hex.alya"
+
+function _u8to32(arr, offset)
+    let b0 = arr[offset]
+    let b1 = arr[offset + 1]
+    let b2 = arr[offset + 2]
+    let b3 = arr[offset + 3]
+    return bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
+end
+
+function poly1305_mac_bytes(msg_bytes, key_bytes)
+    if len(key_bytes) < 32
+        throw "Poly1305 key must be at least 32 bytes"
+    end
+
+    # 1. Clamp r
+    let r0 = bit_and(_u8to32(key_bytes, 0), 67108863)
+    let r1 = bit_and(bit_shr(_u8to32(key_bytes, 3), 2), 67108611)
+    let r2 = bit_and(bit_shr(_u8to32(key_bytes, 6), 4), 67092735)
+    let r3 = bit_and(bit_shr(_u8to32(key_bytes, 9), 6), 66076671)
+    let r4 = bit_and(bit_shr(_u8to32(key_bytes, 12), 8), 1048575)
+
+    let s1 = r1 * 5
+    let s2 = r2 * 5
+    let s3 = r3 * 5
+    let s4 = r4 * 5
+
+    let pad0 = _u8to32(key_bytes, 16)
+    let pad1 = _u8to32(key_bytes, 20)
+    let pad2 = _u8to32(key_bytes, 24)
+    let pad3 = _u8to32(key_bytes, 28)
+
+    let h0 = 0
+    let h1 = 0
+    let h2 = 0
+    let h3 = 0
+    let h4 = 0
+
+    let mlen = len(msg_bytes)
+    let offset = 0
+
+    # Process full 16-byte blocks
+    while offset + 16 <= mlen
+        h0 += bit_and(_u8to32(msg_bytes, offset + 0), 67108863)
+        h1 += bit_and(bit_shr(_u8to32(msg_bytes, offset + 3), 2), 67108863)
+        h2 += bit_and(bit_shr(_u8to32(msg_bytes, offset + 6), 4), 67108863)
+        h3 += bit_and(bit_shr(_u8to32(msg_bytes, offset + 9), 6), 67108863)
+        h4 += bit_or(bit_shr(_u8to32(msg_bytes, offset + 12), 8), 16777216)
+
+        let d0 = h0 * r0 + h1 * s4 + h2 * s3 + h3 * s2 + h4 * s1
+        let d1 = h0 * r1 + h1 * r0 + h2 * s4 + h3 * s3 + h4 * s2
+        let d2 = h0 * r2 + h1 * r1 + h2 * r0 + h3 * s4 + h4 * s3
+        let d3 = h0 * r3 + h1 * r2 + h2 * r1 + h3 * r0 + h4 * s4
+        let d4 = h0 * r4 + h1 * r3 + h2 * r2 + h3 * r1 + h4 * r0
+
+        let c = bit_shr(d0, 26)
+        h0 = bit_and(d0, 67108863)
+        d1 += c
+        c = bit_shr(d1, 26)
+        h1 = bit_and(d1, 67108863)
+        d2 += c
+        c = bit_shr(d2, 26)
+        h2 = bit_and(d2, 67108863)
+        d3 += c
+        c = bit_shr(d3, 26)
+        h3 = bit_and(d3, 67108863)
+        d4 += c
+        c = bit_shr(d4, 26)
+        h4 = bit_and(d4, 67108863)
+
+        h0 += c * 5
+        c = bit_shr(h0, 26)
+        h0 = bit_and(h0, 67108863)
+        h1 += c
+
+        offset += 16
+    end
+
+    # Process remaining leftover bytes (if any)
+    if offset < mlen
+        let buf = []
+        let i = 0
+        while offset + i < mlen
+            buf.push(msg_bytes[offset + i])
+            i += 1
+        end
+        buf.push(1)
+        while len(buf) < 16
+            buf.push(0)
+        end
+
+        h0 += bit_and(_u8to32(buf, 0), 67108863)
+        h1 += bit_and(bit_shr(_u8to32(buf, 3), 2), 67108863)
+        h2 += bit_and(bit_shr(_u8to32(buf, 6), 4), 67108863)
+        h3 += bit_and(bit_shr(_u8to32(buf, 9), 6), 67108863)
+        h4 += bit_shr(_u8to32(buf, 12), 8)
+
+        let d0 = h0 * r0 + h1 * s4 + h2 * s3 + h3 * s2 + h4 * s1
+        let d1 = h0 * r1 + h1 * r0 + h2 * s4 + h3 * s3 + h4 * s2
+        let d2 = h0 * r2 + h1 * r1 + h2 * r0 + h3 * s4 + h4 * s3
+        let d3 = h0 * r3 + h1 * r2 + h2 * r1 + h3 * r0 + h4 * s4
+        let d4 = h0 * r4 + h1 * r3 + h2 * r2 + h3 * r1 + h4 * r0
+
+        let c = bit_shr(d0, 26)
+        h0 = bit_and(d0, 67108863)
+        d1 += c
+        c = bit_shr(d1, 26)
+        h1 = bit_and(d1, 67108863)
+        d2 += c
+        c = bit_shr(d2, 26)
+        h2 = bit_and(d2, 67108863)
+        d3 += c
+        c = bit_shr(d3, 26)
+        h3 = bit_and(d3, 67108863)
+        d4 += c
+        c = bit_shr(d4, 26)
+        h4 = bit_and(d4, 67108863)
+
+        h0 += c * 5
+        c = bit_shr(h0, 26)
+        h0 = bit_and(h0, 67108863)
+        h1 += c
+    end
+
+    # Fully carry h
+    let c = bit_shr(h1, 26)
+    h1 = bit_and(h1, 67108863)
+    h2 += c
+    c = bit_shr(h2, 26)
+    h2 = bit_and(h2, 67108863)
+    h3 += c
+    c = bit_shr(h3, 26)
+    h3 = bit_and(h3, 67108863)
+    h4 += c
+    c = bit_shr(h4, 26)
+    h4 = bit_and(h4, 67108863)
+    h0 += c * 5
+    c = bit_shr(h0, 26)
+    h0 = bit_and(h0, 67108863)
+    h1 += c
+
+    # Compute h - p
+    let g0 = h0 + 5
+    c = bit_shr(g0, 26)
+    g0 = bit_and(g0, 67108863)
+    let g1 = h1 + c
+    c = bit_shr(g1, 26)
+    g1 = bit_and(g1, 67108863)
+    let g2 = h2 + c
+    c = bit_shr(g2, 26)
+    g2 = bit_and(g2, 67108863)
+    let g3 = h3 + c
+    c = bit_shr(g3, 26)
+    g3 = bit_and(g3, 67108863)
+    let g4 = h4 + c - 67108864
+
+    if g4 >= 0
+        h0 = g0
+        h1 = g1
+        h2 = g2
+        h3 = g3
+        h4 = bit_and(g4, 67108863)
+    end
+
+    # h = h % 2^128 (repack into 4 32-bit integers)
+    let out0 = bit_and(bit_or(h0, bit_shl(h1, 26)), 4294967295)
+    let out1 = bit_and(bit_or(bit_shr(h1, 6), bit_shl(h2, 20)), 4294967295)
+    let out2 = bit_and(bit_or(bit_shr(h2, 12), bit_shl(h3, 14)), 4294967295)
+    let out3 = bit_and(bit_or(bit_shr(h3, 18), bit_shl(h4, 8)), 4294967295)
+
+    # mac = (h + pad) % 2^128
+    let f0 = out0 + pad0
+    let f1 = out1 + pad1 + bit_shr(f0, 32)
+    out0 = bit_and(f0, 4294967295)
+    let f2 = out2 + pad2 + bit_shr(f1, 32)
+    out1 = bit_and(f1, 4294967295)
+    let f3 = out3 + pad3 + bit_shr(f2, 32)
+    out2 = bit_and(f2, 4294967295)
+    out3 = bit_and(f3, 4294967295)
+
+    let mac = []
+    mac.push(bit_and(out0, 255))
+    mac.push(bit_and(bit_shr(out0, 8), 255))
+    mac.push(bit_and(bit_shr(out0, 16), 255))
+    mac.push(bit_and(bit_shr(out0, 24), 255))
+
+    mac.push(bit_and(out1, 255))
+    mac.push(bit_and(bit_shr(out1, 8), 255))
+    mac.push(bit_and(bit_shr(out1, 16), 255))
+    mac.push(bit_and(bit_shr(out1, 24), 255))
+
+    mac.push(bit_and(out2, 255))
+    mac.push(bit_and(bit_shr(out2, 8), 255))
+    mac.push(bit_and(bit_shr(out2, 16), 255))
+    mac.push(bit_and(bit_shr(out2, 24), 255))
+
+    mac.push(bit_and(out3, 255))
+    mac.push(bit_and(bit_shr(out3, 8), 255))
+    mac.push(bit_and(bit_shr(out3, 16), 255))
+    mac.push(bit_and(bit_shr(out3, 24), 255))
+
+    return mac
+end
+
+function poly1305_mac(msg_str, key_bytes)
+    let m_bytes = str_to_bytes(msg_str)
+    let tag = poly1305_mac_bytes(m_bytes, key_bytes)
+    return bytes_to_hex(tag)
+end
+
+function poly1305_verify(msg_str, key_bytes, expected_tag_hex)
+    let computed_tag_hex = poly1305_mac(msg_str, key_bytes)
+    return constant_time_eq(computed_tag_hex, expected_tag_hex)
+end

@@ -1,14 +1,15 @@
 [package]
 name = "crypto"
-version = "0.4.0"
+version = "0.5.0"
 alya-version = "0.0.16"
 entry = "src/lib.alya"
-description = "Comprehensive cryptography, hashing, and cipher library for Alya"
+description = "Comprehensive cryptography, hashing, and cipher library for Alya (AES, ChaCha20-Poly1305, SHA-2/3, BLAKE2s, Keccak, KDF, Encodings)"
 authors = ["Alya Language Contributors <https://github.com/alya-lang>"]
 license = "MIT"
 homepage = "https://github.com/alya-lang/alya"
 repository = "https://github.com/alya-lang/crypto"
-keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "sha256", "sha512", "hmac", "hkdf", "pbkdf2", "aes", "chacha20", "rc4", "base32", "base58"]
+keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "sha256", "sha512", "sha3", "keccak", "blake2s", "hmac", "poly1305", "hkdf", "pbkdf2", "aes", "chacha20", "rc4", "base32", "base58"]
+
 
 [dependencies]
 rand = { git = "https://github.com/alya-lang/rand", tag = "v0.2.0" }
