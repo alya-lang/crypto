@@ -1,9 +1,9 @@
-# Test suite for crypto package
+# Comprehensive test suite for crypto package
 import "std/test"
 import "../src/lib.alya" as crypto
 
 function main()
-    test_suite("crypto Package Test Suite")
+    test_suite("crypto Package Comprehensive Test Suite")
     let r = runner_new()
 
     # --- 1. Hex Encodings ---
@@ -27,54 +27,134 @@ function main()
     let b64u_dec = crypto::base64url_decode("aGVsbG8gd29ybGQ")
     runner_assert_str_eq(r, b64u_dec, "hello world", "base64url_decode")
 
-    # --- 4. SHA-256 Hashes ---
+    # --- 4. Base32 Encodings (RFC 4648) ---
+    runner_assert_str_eq(r, crypto::base32_encode(""), "", "base32 empty")
+    runner_assert_str_eq(r, crypto::base32_encode("f"), "MY======", "base32 'f'")
+    runner_assert_str_eq(r, crypto::base32_encode("fo"), "MZXQ====", "base32 'fo'")
+    runner_assert_str_eq(r, crypto::base32_encode("foo"), "MZXW6===", "base32 'foo'")
+    runner_assert_str_eq(r, crypto::base32_encode("foob"), "MZXW6YQ=", "base32 'foob'")
+    runner_assert_str_eq(r, crypto::base32_encode("fooba"), "MZXW6YTB", "base32 'fooba'")
+    runner_assert_str_eq(r, crypto::base32_encode("foobar"), "MZXW6YTBOI======", "base32 'foobar'")
+    runner_assert_str_eq(r, crypto::base32_decode("MZXW6YTBOI======"), "foobar", "base32 decode 'foobar'")
+    runner_assert_eq(r, crypto::is_base32("MZXW6YTBOI======"), 1, "is_base32 valid")
+    runner_assert_eq(r, crypto::is_base32("MZXW68=="), 0, "is_base32 invalid char 8")
+
+    # --- 5. Base58 Encodings (Bitcoin) ---
+    runner_assert_str_eq(r, crypto::base58_encode(""), "", "base58 empty")
+    runner_assert_str_eq(r, crypto::base58_encode("Hello World"), "JxF12TrwUP45BMd", "base58 'Hello World'")
+    runner_assert_str_eq(r, crypto::base58_decode("JxF12TrwUP45BMd"), "Hello World", "base58 decode 'Hello World'")
+    runner_assert_eq(r, crypto::is_base58("JxF12TrwUP45BMd"), 1, "is_base58 valid")
+    runner_assert_eq(r, crypto::is_base58("0OIl"), 0, "is_base58 invalid 0/O/I/l")
+
+    # --- 6. SHA-256 Hashes ---
     let s256_empty = crypto::sha256("")
     runner_assert_str_eq(r, s256_empty, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sha256 empty string")
-
     let s256_fox = crypto::sha256("The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, s256_fox, "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592", "sha256 standard fox vector")
 
-    # --- 5. SHA-224 Hashes ---
+    # --- 7. SHA-224 Hashes ---
     let s224_empty = crypto::sha224("")
     runner_assert_str_eq(r, s224_empty, "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f", "sha224 empty string")
-
     let s224_fox = crypto::sha224("The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, s224_fox, "730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525", "sha224 standard fox vector")
 
-    # --- 6. SHA-1 Hashes ---
+    # --- 8. SHA-512 & SHA-384 Hashes ---
+    let s512_empty = crypto::sha512("")
+    runner_assert_str_eq(r, s512_empty, "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e", "sha512 empty string")
+    let s512_fox = crypto::sha512("The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, s512_fox, "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6", "sha512 fox vector")
+
+    let s384_empty = crypto::sha384("")
+    runner_assert_str_eq(r, s384_empty, "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b", "sha384 empty string")
+    let s384_fox = crypto::sha384("The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, s384_fox, "ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1", "sha384 fox vector")
+
+    # --- 9. SHA-1 Hashes ---
     let s1_empty = crypto::sha1("")
     runner_assert_str_eq(r, s1_empty, "da39a3ee5e6b4b0d3255bfef95601890afd80709", "sha1 empty string")
-
     let s1_fox = crypto::sha1("The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, s1_fox, "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12", "sha1 standard fox vector")
 
-    # --- 7. MD5 Hashes ---
+    # --- 10. MD5 Hashes ---
     let md5_empty = crypto::md5("")
     runner_assert_str_eq(r, md5_empty, "d41d8cd98f00b204e9800998ecf8427e", "md5 empty string")
-
     let md5_fox = crypto::md5("The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, md5_fox, "9e107d9d372bb6826bd81d3542a419d6", "md5 standard fox vector")
 
-    # --- 8. HMAC Message Authentication ---
+    # --- 11. HMAC Message Authentication ---
     let hmac_256 = crypto::hmac_sha256("key", "The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, hmac_256, "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8", "hmac_sha256 standard vector")
-
+    let hmac_512 = crypto::hmac_sha512("key", "The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, hmac_512, "b42af09057bac1e2d41708e48a902e09b5ff7f12ab428a4fe86653c73dd248fb82f948a549f7b791a5b41915ee4d1ec3935357e4e2317250d0372afa2ebeeb3a", "hmac_sha512 standard vector")
+    let hmac_384 = crypto::hmac_sha384("key", "The quick brown fox jumps over the lazy dog")
+    runner_assert_str_eq(r, hmac_384, "d7f4727e2c0b39ae0f1e40cc96f60242d5b7801841cea6fc592c5d3e1ae50700582a96cf35e1e554995fe4e03381c237", "hmac_sha384 standard vector")
     let hmac_1 = crypto::hmac_sha1("key", "The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, hmac_1, "de7c9b85b8b78aa6bc8a7a36f70a90701c9db4d9", "hmac_sha1 standard vector")
-
     let hmac_5 = crypto::hmac_md5("key", "The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, hmac_5, "80070713463e7749b90c2dc24911e275", "hmac_md5 standard vector")
 
-    # --- 9. Timing Attack Prevention ---
+    # --- 12. Timing Attack Prevention ---
     runner_assert_eq(r, crypto::constant_time_eq("secret_hash", "secret_hash"), 1, "constant_time_eq matching")
     runner_assert_eq(r, crypto::constant_time_eq("secret_hash", "secret_hase"), 0, "constant_time_eq mismatch")
     runner_assert_eq(r, crypto::constant_time_eq("short", "longer_one"), 0, "constant_time_eq length mismatch")
 
-    # --- 10. PBKDF2 Key Derivation ---
+    # --- 13. Key Derivation (PBKDF2 & HKDF) ---
     let pbkdf2_res = crypto::pbkdf2_hmac_sha256("password", "salt", 1, 32)
     runner_assert_str_eq(r, pbkdf2_res, "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b", "pbkdf2_hmac_sha256 RFC 6070 vector")
 
-    # --- 11. Random & Entropy ---
+    let ikm_hex = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+    let salt_hex = "000102030405060708090a0b0c"
+    let info_hex = "f0f1f2f3f4f5f6f7f8f9"
+    let okm_hex = crypto::hkdf_hex(salt_hex, ikm_hex, info_hex, 42)
+    let expected_hkdf = "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+    runner_assert_str_eq(r, okm_hex, expected_hkdf, "hkdf RFC 5869 Test Case 1")
+
+    # --- 14. Ciphers: RC4 Stream Cipher ---
+    let rc4_key = "Key"
+    let rc4_pt = "Plaintext"
+    let rc4_ct = crypto::rc4_encrypt(rc4_key, rc4_pt)
+    runner_assert_str_eq(r, rc4_ct, "bbf316e8d940af0ad3", "rc4_encrypt standard test vector")
+    let rc4_rec = crypto::rc4_decrypt(rc4_key, rc4_ct)
+    runner_assert_str_eq(r, rc4_rec, rc4_pt, "rc4_decrypt recovered plaintext")
+
+    # --- 15. Ciphers: ChaCha20 (RFC 8439) ---
+    let cc_key = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+    let cc_nonce = crypto::hex_to_bytes("000000090000004a00000000")
+    let cc_pt = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
+    let cc_ct = crypto::chacha20_encrypt(cc_key, cc_nonce, 1, cc_pt)
+    let cc_expected = "5c90838db44879743e6bfd58c64e05a8a2bc91a913af0e23704acfbaa0b80d3da1a20b2027b893302ee29e63f9c222c1da67f0b5fe7928dfaea2a391cd251c2164e4fa5756b9da6e8ca5dc908c44cbf6e93ea6b4cc406988d7da69bf795bf19b84539df73bd9b3e9ca4d03bc0a586ff528dc"
+    runner_assert_str_eq(r, cc_ct, cc_expected, "chacha20 RFC 8439 Section 2.4.2 encryption vector")
+    let cc_rec = crypto::chacha20_decrypt(cc_key, cc_nonce, 1, cc_ct)
+    runner_assert_str_eq(r, cc_rec, cc_pt, "chacha20 decryption matches plaintext")
+
+    # --- 16. Ciphers: AES-128 and AES-256 (FIPS 197) ---
+    let aes128_k = crypto::hex_to_bytes("2b7e151628aed2a6abf7158809cf4f3c")
+    let aes_pt_block = crypto::hex_to_bytes("6bc1bee22e409f96e93d7e117393172a")
+    let exp128 = crypto::aes_key_expansion(aes128_k)
+    let ct128_blk = crypto::aes_encrypt_block(exp128[0], exp128[1], aes_pt_block)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(ct128_blk), "3ad77bb40d7a3660a89ecaf32466ef97", "aes-128 NIST block encrypt")
+    let pt128_rec = crypto::aes_decrypt_block(exp128[0], exp128[1], ct128_blk)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(pt128_rec), "6bc1bee22e409f96e93d7e117393172a", "aes-128 NIST block decrypt")
+
+    let aes256_k = crypto::hex_to_bytes("603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4")
+    let exp256 = crypto::aes_key_expansion(aes256_k)
+    let ct256_blk = crypto::aes_encrypt_block(exp256[0], exp256[1], aes_pt_block)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(ct256_blk), "f3eed1bdb5d2a03c064b5a7e3db181f8", "aes-256 NIST block encrypt")
+    let pt256_rec = crypto::aes_decrypt_block(exp256[0], exp256[1], ct256_blk)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(pt256_rec), "6bc1bee22e409f96e93d7e117393172a", "aes-256 NIST block decrypt")
+
+    # AES CBC & CTR modes
+    let aes_iv = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f")
+    let cbc_msg = "Alya cryptographic primitives test payload."
+    let cbc_enc = crypto::aes_cbc_encrypt(aes128_k, aes_iv, cbc_msg)
+    let cbc_dec = crypto::aes_cbc_decrypt(aes128_k, aes_iv, cbc_enc)
+    runner_assert_str_eq(r, cbc_dec, cbc_msg, "aes-128-cbc roundtrip with PKCS#7")
+
+    let ctr_enc = crypto::aes_ctr_encrypt(aes128_k, aes_iv, cbc_msg)
+    let ctr_dec = crypto::aes_ctr_decrypt(aes128_k, aes_iv, ctr_enc)
+    runner_assert_str_eq(r, ctr_dec, cbc_msg, "aes-128-ctr roundtrip")
+
+    # --- 17. Random & Entropy ---
     let rnd_bytes = crypto::random_bytes(16)
     runner_assert_eq(r, len(rnd_bytes), 16, "random_bytes count")
     let rnd_hex = crypto::random_hex(16)

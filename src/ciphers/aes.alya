@@ -1,0 +1,554 @@
+# Advanced Encryption Standard (AES) - FIPS 197
+# Supports AES-128 (16-byte key) and AES-256 (32-byte key)
+# Modes: CBC (PKCS#7 padded) and CTR (Counter stream mode)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../encodings/hex.alya"
+
+function get_aes_sbox()
+    return [
+        99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118,
+        202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192,
+        183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21,
+        4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117,
+        9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132,
+        83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207,
+        208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168,
+        81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210,
+        205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115,
+        96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219,
+        224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121,
+        231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8,
+        186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138,
+        112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158,
+        225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223,
+        140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22
+    ]
+end
+
+function get_aes_rsbox()
+    return [
+        82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251,
+        124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203,
+        84, 123, 148, 50, 166, 194, 35, 61, 238, 76, 149, 11, 66, 250, 195, 78,
+        8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209, 37,
+        114, 248, 246, 100, 134, 104, 152, 22, 212, 164, 92, 204, 93, 101, 182, 146,
+        108, 112, 72, 80, 253, 237, 185, 218, 94, 21, 70, 87, 167, 141, 157, 132,
+        144, 216, 171, 0, 140, 188, 211, 10, 247, 228, 88, 5, 184, 179, 69, 6,
+        208, 44, 30, 143, 202, 63, 15, 2, 193, 175, 189, 3, 1, 19, 138, 107,
+        58, 145, 17, 65, 79, 103, 220, 234, 151, 242, 207, 206, 240, 180, 230, 115,
+        150, 172, 116, 34, 231, 173, 53, 133, 226, 249, 55, 232, 28, 117, 223, 110,
+        71, 241, 26, 113, 29, 41, 197, 137, 111, 183, 98, 14, 170, 24, 190, 27,
+        252, 86, 62, 75, 198, 210, 121, 32, 154, 219, 192, 254, 120, 205, 90, 244,
+        31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95,
+        96, 81, 127, 169, 25, 181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239,
+        160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97,
+        23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125
+    ]
+end
+
+function get_aes_rcon()
+    return [0, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54]
+end
+
+function _aes_xtime(a)
+    let shifted = bit_shl(a, 1)
+    if bit_and(a, 128) != 0
+        return bit_and(bit_xor(shifted, 27), 255)
+    end
+    return bit_and(shifted, 255)
+end
+
+function _aes_gf_mul(a, b)
+    let res = 0
+    let temp_a = a
+    let temp_b = b
+    while temp_b > 0
+        if bit_and(temp_b, 1) != 0
+            res = bit_xor(res, temp_a)
+        end
+        temp_a = _aes_xtime(temp_a)
+        temp_b = bit_shr(temp_b, 1)
+    end
+    return res
+end
+
+function aes_key_expansion(key_bytes)
+    let sbox = get_aes_sbox()
+    let rcon = get_aes_rcon()
+    let klen = len(key_bytes)
+    let nk = bit_shr(klen, 2)
+    let nr = 10
+    if nk == 6
+        nr = 12
+    end
+    if nk == 8
+        nr = 14
+    end
+
+    let total_words = 4 * (nr + 1)
+    let w = []
+
+    let i = 0
+    while i < nk
+        w.push(key_bytes[4 * i])
+        w.push(key_bytes[4 * i + 1])
+        w.push(key_bytes[4 * i + 2])
+        w.push(key_bytes[4 * i + 3])
+        i += 1
+    end
+
+    while i < total_words
+        let t0 = w[4 * (i - 1)]
+        let t1 = w[4 * (i - 1) + 1]
+        let t2 = w[4 * (i - 1) + 2]
+        let t3 = w[4 * (i - 1) + 3]
+
+        if i % nk == 0
+            let temp = t0
+            t0 = t1
+            t1 = t2
+            t2 = t3
+            t3 = temp
+
+            t0 = sbox[t0]
+            t1 = sbox[t1]
+            t2 = sbox[t2]
+            t3 = sbox[t3]
+
+            let r_idx = i / nk
+            t0 = bit_xor(t0, rcon[r_idx])
+        end
+
+        if nk > 6 and i % nk == 4
+            t0 = sbox[t0]
+            t1 = sbox[t1]
+            t2 = sbox[t2]
+            t3 = sbox[t3]
+        end
+
+        let p0 = w[4 * (i - nk)]
+        let p1 = w[4 * (i - nk) + 1]
+        let p2 = w[4 * (i - nk) + 2]
+        let p3 = w[4 * (i - nk) + 3]
+
+        w.push(bit_xor(p0, t0))
+        w.push(bit_xor(p1, t1))
+        w.push(bit_xor(p2, t2))
+        w.push(bit_xor(p3, t3))
+
+        i += 1
+    end
+
+    return [w, nr]
+end
+
+function aes_encrypt_block(exp_keys, nr, block16)
+    let sbox = get_aes_sbox()
+    let s = []
+    let i = 0
+    while i < 16
+        s.push(block16[i])
+        i += 1
+    end
+
+    i = 0
+    while i < 16
+        s[i] = bit_xor(s[i], exp_keys[i])
+        i += 1
+    end
+
+    let round = 1
+    while round < nr
+        i = 0
+        while i < 16
+            s[i] = sbox[s[i]]
+            i += 1
+        end
+
+        let temp = s[1]
+        s[1] = s[5]
+        s[5] = s[9]
+        s[9] = s[13]
+        s[13] = temp
+
+        temp = s[2]
+        s[2] = s[10]
+        s[10] = temp
+        temp = s[6]
+        s[6] = s[14]
+        s[14] = temp
+
+        temp = s[15]
+        s[15] = s[11]
+        s[11] = s[7]
+        s[7] = s[3]
+        s[3] = temp
+
+        let col = 0
+        while col < 4
+            let c = col * 4
+            let a0 = s[c]
+            let a1 = s[c + 1]
+            let a2 = s[c + 2]
+            let a3 = s[c + 3]
+
+            s[c]     = bit_xor(bit_xor(_aes_xtime(a0), bit_xor(_aes_xtime(a1), a1)), bit_xor(a2, a3))
+            s[c + 1] = bit_xor(bit_xor(a0, _aes_xtime(a1)), bit_xor(bit_xor(_aes_xtime(a2), a2), a3))
+            s[c + 2] = bit_xor(bit_xor(a0, a1), bit_xor(_aes_xtime(a2), bit_xor(_aes_xtime(a3), a3)))
+            s[c + 3] = bit_xor(bit_xor(bit_xor(_aes_xtime(a0), a0), a1), bit_xor(a2, _aes_xtime(a3)))
+
+            col += 1
+        end
+
+        let r_offset = round * 16
+        i = 0
+        while i < 16
+            s[i] = bit_xor(s[i], exp_keys[r_offset + i])
+            i += 1
+        end
+
+        round += 1
+    end
+
+    # Final Round (without MixColumns)
+    i = 0
+    while i < 16
+        s[i] = sbox[s[i]]
+        i += 1
+    end
+
+    let temp = s[1]
+    s[1] = s[5]
+    s[5] = s[9]
+    s[9] = s[13]
+    s[13] = temp
+
+    temp = s[2]
+    s[2] = s[10]
+    s[10] = temp
+    temp = s[6]
+    s[6] = s[14]
+    s[14] = temp
+
+    temp = s[15]
+    s[15] = s[11]
+    s[11] = s[7]
+    s[7] = s[3]
+    s[3] = temp
+
+    let r_offset = nr * 16
+    i = 0
+    while i < 16
+        s[i] = bit_xor(s[i], exp_keys[r_offset + i])
+        i += 1
+    end
+
+    return s
+end
+
+function aes_decrypt_block(exp_keys, nr, block16)
+    let rsbox = get_aes_rsbox()
+    let s = []
+    let i = 0
+    while i < 16
+        s.push(block16[i])
+        i += 1
+    end
+
+    let r_offset = nr * 16
+    i = 0
+    while i < 16
+        s[i] = bit_xor(s[i], exp_keys[r_offset + i])
+        i += 1
+    end
+
+    let round = nr - 1
+    while round > 0
+        let temp = s[13]
+        s[13] = s[9]
+        s[9] = s[5]
+        s[5] = s[1]
+        s[1] = temp
+
+        temp = s[2]
+        s[2] = s[10]
+        s[10] = temp
+        temp = s[6]
+        s[6] = s[14]
+        s[14] = temp
+
+        temp = s[3]
+        s[3] = s[7]
+        s[7] = s[11]
+        s[11] = s[15]
+        s[15] = temp
+
+        i = 0
+        while i < 16
+            s[i] = rsbox[s[i]]
+            i += 1
+        end
+
+        r_offset = round * 16
+        i = 0
+        while i < 16
+            s[i] = bit_xor(s[i], exp_keys[r_offset + i])
+            i += 1
+        end
+
+        let col = 0
+        while col < 4
+            let c = col * 4
+            let s0 = s[c]
+            let s1 = s[c + 1]
+            let s2 = s[c + 2]
+            let s3 = s[c + 3]
+
+            s[c]     = bit_xor(bit_xor(_aes_gf_mul(14, s0), _aes_gf_mul(11, s1)), bit_xor(_aes_gf_mul(13, s2), _aes_gf_mul(9, s3)))
+            s[c + 1] = bit_xor(bit_xor(_aes_gf_mul(9, s0), _aes_gf_mul(14, s1)), bit_xor(_aes_gf_mul(11, s2), _aes_gf_mul(13, s3)))
+            s[c + 2] = bit_xor(bit_xor(_aes_gf_mul(13, s0), _aes_gf_mul(9, s1)), bit_xor(_aes_gf_mul(14, s2), _aes_gf_mul(11, s3)))
+            s[c + 3] = bit_xor(bit_xor(_aes_gf_mul(11, s0), _aes_gf_mul(13, s1)), bit_xor(_aes_gf_mul(9, s2), _aes_gf_mul(14, s3)))
+
+            col += 1
+        end
+
+        round -= 1
+    end
+
+    let temp = s[13]
+    s[13] = s[9]
+    s[9] = s[5]
+    s[5] = s[1]
+    s[1] = temp
+
+    temp = s[2]
+    s[2] = s[10]
+    s[10] = temp
+    temp = s[6]
+    s[6] = s[14]
+    s[14] = temp
+
+    temp = s[3]
+    s[3] = s[7]
+    s[7] = s[11]
+    s[11] = s[15]
+    s[15] = temp
+
+    i = 0
+    while i < 16
+        s[i] = rsbox[s[i]]
+        i += 1
+    end
+
+    i = 0
+    while i < 16
+        s[i] = bit_xor(s[i], exp_keys[i])
+        i += 1
+    end
+
+    return s
+end
+
+# PKCS#7 Padding
+function pkcs7_pad(data_bytes, block_size = 16)
+    let dlen = len(data_bytes)
+    let pad_len = block_size - (dlen % block_size)
+    let out_padded = []
+    let i = 0
+    while i < dlen
+        out_padded.push(data_bytes[i])
+        i += 1
+    end
+    i = 0
+    while i < pad_len
+        out_padded.push(pad_len)
+        i += 1
+    end
+    return out_padded
+end
+
+function pkcs7_unpad(data_bytes)
+    let dlen = len(data_bytes)
+    if dlen == 0
+        return []
+    end
+    let pad_len = data_bytes[dlen - 1]
+    if pad_len == 0 or pad_len > 16 or pad_len > dlen
+        return data_bytes
+    end
+    let i = dlen - pad_len
+    while i < dlen
+        if data_bytes[i] != pad_len
+            return data_bytes
+        end
+        i += 1
+    end
+    let out_unpadded = []
+    i = 0
+    let target_len = dlen - pad_len
+    while i < target_len
+        out_unpadded.push(data_bytes[i])
+        i += 1
+    end
+    return out_unpadded
+end
+
+# AES-CBC Mode
+function aes_cbc_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
+    let exp_info = aes_key_expansion(key_bytes)
+    let w = exp_info[0]
+    let nr = exp_info[1]
+
+    let padded = pkcs7_pad(plaintext_bytes, 16)
+    let plen = len(padded)
+    let out = []
+
+    let prev = []
+    let i = 0
+    while i < 16
+        prev.push(iv_bytes[i])
+        i += 1
+    end
+
+    let offset = 0
+    while offset < plen
+        let block_in = []
+        i = 0
+        while i < 16
+            block_in.push(bit_xor(padded[offset + i], prev[i]))
+            i += 1
+        end
+
+        let ct_block = aes_encrypt_block(w, nr, block_in)
+        i = 0
+        while i < 16
+            out.push(ct_block[i])
+            prev[i] = ct_block[i]
+            i += 1
+        end
+
+        offset += 16
+    end
+
+    return out
+end
+
+function aes_cbc_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
+    let exp_info = aes_key_expansion(key_bytes)
+    let w = exp_info[0]
+    let nr = exp_info[1]
+
+    let clen = len(ciphertext_bytes)
+    let out_padded = []
+
+    let prev = []
+    let i = 0
+    while i < 16
+        prev.push(iv_bytes[i])
+        i += 1
+    end
+
+    let offset = 0
+    while offset < clen
+        let ct_block = []
+        i = 0
+        while i < 16
+            ct_block.push(ciphertext_bytes[offset + i])
+            i += 1
+        end
+
+        let pt_block = aes_decrypt_block(w, nr, ct_block)
+        i = 0
+        while i < 16
+            out_padded.push(bit_xor(pt_block[i], prev[i]))
+            prev[i] = ct_block[i]
+            i += 1
+        end
+
+        offset += 16
+    end
+
+    return pkcs7_unpad(out_padded)
+end
+
+function aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
+    let p_bytes = str_to_bytes(plaintext_str)
+    let c_bytes = aes_cbc_encrypt_bytes(key_bytes, iv_bytes, p_bytes)
+    return bytes_to_hex(c_bytes)
+end
+
+function aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+    let c_bytes = hex_to_bytes(ciphertext_hex)
+    let d_bytes = aes_cbc_decrypt_bytes(key_bytes, iv_bytes, c_bytes)
+    return bytes_to_str(d_bytes)
+end
+
+# AES-CTR Mode
+function _aes_inc_counter(ctr16)
+    let i = 15
+    while i >= 0
+        ctr16[i] = (ctr16[i] + 1) % 256
+        if ctr16[i] != 0
+            break
+        end
+        i -= 1
+    end
+end
+
+function aes_ctr_process_bytes(key_bytes, iv_bytes, data_bytes)
+    let exp_info = aes_key_expansion(key_bytes)
+    let w = exp_info[0]
+    let nr = exp_info[1]
+
+    let dlen = len(data_bytes)
+    let out = []
+
+    let ctr = []
+    let i = 0
+    while i < 16
+        ctr.push(iv_bytes[i])
+        i += 1
+    end
+
+    let offset = 0
+    while offset < dlen
+        let keystream = aes_encrypt_block(w, nr, ctr)
+        _aes_inc_counter(ctr)
+
+        let chunk = 16
+        if offset + chunk > dlen
+            chunk = dlen - offset
+        end
+
+        i = 0
+        while i < chunk
+            out.push(bit_xor(data_bytes[offset + i], keystream[i]))
+            i += 1
+        end
+
+        offset += chunk
+    end
+
+    return out
+end
+
+function aes_ctr_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
+    return aes_ctr_process_bytes(key_bytes, iv_bytes, plaintext_bytes)
+end
+
+function aes_ctr_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
+    return aes_ctr_process_bytes(key_bytes, iv_bytes, ciphertext_bytes)
+end
+
+function aes_ctr_encrypt(key_bytes, iv_bytes, plaintext_str)
+    let p_bytes = str_to_bytes(plaintext_str)
+    let c_bytes = aes_ctr_process_bytes(key_bytes, iv_bytes, p_bytes)
+    return bytes_to_hex(c_bytes)
+end
+
+function aes_ctr_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+    let c_bytes = hex_to_bytes(ciphertext_hex)
+    let d_bytes = aes_ctr_process_bytes(key_bytes, iv_bytes, c_bytes)
+    return bytes_to_str(d_bytes)
+end

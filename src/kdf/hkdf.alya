@@ -1,0 +1,105 @@
+# HMAC-based Extract-and-Expand Key Derivation Function (HKDF - RFC 5869)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../mac/hmac.alya"
+import "../encodings/hex.alya"
+
+function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo = "sha256")
+    let s = []
+    let slen = len(salt_bytes)
+    if slen == 0
+        let hash_len = 32
+        if hash_algo == "sha512"
+            hash_len = 64
+        elif hash_algo == "sha384"
+            hash_len = 48
+        end
+        let z = 0
+        while z < hash_len
+            s.push(0)
+            z += 1
+        end
+    else
+        let i = 0
+        while i < slen
+            s.push(salt_bytes[i])
+            i += 1
+        end
+    end
+
+    if hash_algo == "sha512"
+        return hmac_sha512_bytes(s, ikm_bytes)
+    elif hash_algo == "sha384"
+        return hmac_sha384_bytes(s, ikm_bytes)
+    end
+    return hmac_sha256_bytes(s, ikm_bytes)
+end
+
+function hkdf_expand_bytes(prk_bytes, info_bytes, length, hash_algo = "sha256")
+    let hash_len = 32
+    if hash_algo == "sha512"
+        hash_len = 64
+    elif hash_algo == "sha384"
+        hash_len = 48
+    end
+
+    let n = (length + hash_len - 1) / hash_len
+    let okm = []
+    let t = []
+    let i = 1
+    let ilen = len(info_bytes)
+
+    while i <= n
+        let step_data = []
+        let ti = 0
+        let tlen = len(t)
+        while ti < tlen
+            step_data.push(t[ti])
+            ti += 1
+        end
+        let ii = 0
+        while ii < ilen
+            step_data.push(info_bytes[ii])
+            ii += 1
+        end
+        step_data.push(i)
+
+        if hash_algo == "sha512"
+            t = hmac_sha512_bytes(prk_bytes, step_data)
+        elif hash_algo == "sha384"
+            t = hmac_sha384_bytes(prk_bytes, step_data)
+        else
+            t = hmac_sha256_bytes(prk_bytes, step_data)
+        end
+
+        let tj = 0
+        while tj < hash_len and len(okm) < length
+            okm.push(t[tj])
+            tj += 1
+        end
+        i += 1
+    end
+
+    return okm
+end
+
+function hkdf_bytes(salt_bytes, ikm_bytes, info_bytes, length, hash_algo = "sha256")
+    let prk = hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo)
+    return hkdf_expand_bytes(prk, info_bytes, length, hash_algo)
+end
+
+function hkdf(salt_str, ikm_str, info_str, length, hash_algo = "sha256")
+    let s_bytes = str_to_bytes(salt_str)
+    let k_bytes = str_to_bytes(ikm_str)
+    let i_bytes = str_to_bytes(info_str)
+    let okm = hkdf_bytes(s_bytes, k_bytes, i_bytes, length, hash_algo)
+    return bytes_to_hex(okm)
+end
+
+function hkdf_hex(salt_hex, ikm_hex, info_hex, length, hash_algo = "sha256")
+    let s_bytes = hex_to_bytes(salt_hex)
+    let k_bytes = hex_to_bytes(ikm_hex)
+    let i_bytes = hex_to_bytes(info_hex)
+    let okm = hkdf_bytes(s_bytes, k_bytes, i_bytes, length, hash_algo)
+    return bytes_to_hex(okm)
+end

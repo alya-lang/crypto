@@ -5,20 +5,29 @@
 [![Alya](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Falya-lang%2Fcrypto%2Fmain%2Falya.toml&query=%24.package.alya-version&label=Alya&color=orange&prefix=%3E%3D)](https://github.com/alya-lang/alya)
 [![Package Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Falya-lang%2Fcrypto%2Fmain%2Falya.toml&query=%24.package.version&label=Version&color=brightgreen)](alya.toml)
 
-Comprehensive cryptography and hashing library for Alya.
+Comprehensive cryptography, hashing, and cipher library for Alya.
 
 ---
 
 ## 🌟 Features
 
-- ⚡ **Lightweight & High Performance**: 180k+ SHA-256 ops/sec, 500k+ Base64 ops/sec in pure Alya
-- 🔒 **Cryptographic Hash Functions**: SHA-256, SHA-224, SHA-1, MD5
-- 🔑 **Message Authentication Codes**: HMAC (HMAC-SHA256, HMAC-SHA1, HMAC-MD5)
-- 🛡️ **Key Derivation (KDF)**: RFC 2898 PBKDF2-HMAC-SHA256 for secure password storage
-- 🌐 **Encodings**: Hex, Base64 (RFC 4648), Base64URL (RFC 7515 / JWT-ready)
+- ⚡ **Lightweight & High Performance**: 100% pure Alya implementations with zero C dependencies
+- 🔒 **Cryptographic Hash Functions**: SHA-512, SHA-384, SHA-256, SHA-224, SHA-1, MD5
+- 🔑 **Message Authentication Codes**: HMAC (HMAC-SHA512, HMAC-SHA384, HMAC-SHA256, HMAC-SHA1, HMAC-MD5)
+- 🛡️ **Key Derivation (KDF)**:
+  - RFC 5869 **HKDF** (HMAC-based Extract-and-Expand)
+  - RFC 2898 **PBKDF2-HMAC-SHA256** for secure password storage
+- 🗝️ **Symmetric Ciphers**:
+  - **AES** (FIPS 197): AES-128 and AES-256 in **CBC** (with PKCS#7 padding) and **CTR** stream mode
+  - **ChaCha20** (RFC 8439): 256-bit high-speed stream cipher
+  - **RC4**: Classic Rivest Cipher 4 stream cipher
+- 🌐 **Encodings**:
+  - Hex, Base64 (RFC 4648), Base64URL (RFC 7515 / JWT-ready)
+  - Base32 (RFC 4648, standard 2FA alphabet)
+  - Base58 (Bitcoin alphanumeric alphabet)
 - ⏱️ **Timing Attack Protection**: Constant-time string and byte equality (`constant_time_eq`)
 - 🎲 **Entropy & Randomness**: Cryptographic UUID v4 and random byte generation
-- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors
+- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (59 passing tests)
 
 ---
 
@@ -26,31 +35,37 @@ Comprehensive cryptography and hashing library for Alya.
 
 ```
 crypto/
-├── alya.toml               # Package manifest
+├── alya.toml               # Package manifest (v0.4.0)
 ├── src/
 │   ├── lib.alya            # Central public API export facade
 │   ├── types.alya          # Configuration and data structures
 │   ├── core/
-│   │   ├── bits.alya       # 32-bit rotation primitives (rotl32, rotr32)
+│   │   ├── bits.alya       # 32-bit & 64-bit rotation primitives (rotl32, rotl64, u64)
 │   │   └── security.alya   # Timing-safe constant-time comparisons
 │   ├── encodings/
 │   │   ├── hex.alya        # Hex encoder, decoder, validator
 │   │   ├── base64.alya     # Standard Base64 encoder/decoder
-│   │   └── base64url.alya  # URL-safe Base64 without padding (RFC 7515)
+│   │   ├── base64url.alya  # URL-safe Base64 without padding (RFC 7515)
+│   │   ├── base32.alya     # Base32 encoder/decoder (RFC 4648)
+│   │   └── base58.alya     # Bitcoin Base58 encoder/decoder
 │   ├── hashes/
+│   │   ├── sha512.alya     # SHA-512 & SHA-384 (FIPS 180-4, 64-bit word architecture)
 │   │   ├── sha256.alya     # SHA-256 & SHA-224 (FIPS 180-4)
 │   │   ├── sha1.alya       # SHA-1 (RFC 3174)
 │   │   └── md5.alya        # MD5 (RFC 1321)
 │   ├── mac/
-│   │   └── hmac.alya       # HMAC-SHA256, HMAC-SHA1, HMAC-MD5 (RFC 2104)
+│   │   └── hmac.alya       # HMAC (SHA-512, SHA-384, SHA-256, SHA-1, MD5)
 │   ├── kdf/
+│   │   ├── hkdf.alya       # HKDF Extract-and-Expand (RFC 5869)
 │   │   └── pbkdf2.alya     # PBKDF2-HMAC-SHA256 (RFC 2898)
+│   ├── ciphers/
+│   │   ├── aes.alya        # AES-128 & AES-256 with CBC (PKCS#7) and CTR modes
+│   │   ├── chacha20.alya   # ChaCha20 stream cipher (RFC 8439)
+│   │   └── rc4.alya        # RC4 stream cipher
 │   └── random/
 │       └── entropy.alya    # UUID v4 and random byte generator
-├── examples/
-│   └── demo.alya           # Comprehensive runnable demo
 ├── tests/
-│   └── test_basic.alya     # NIST/RFC test vectors suite
+│   └── test_basic.alya     # Comprehensive test suite (59 NIST/RFC vectors)
 └── benches/
     └── bench_basic.alya    # Micro-benchmarks
 ```
@@ -81,27 +96,35 @@ alyac install
 import "crypto" as crypto
 
 function main()
-    # 1. Hashing
-    let hash = crypto::sha256("Hello, Alya!")
-    say "SHA-256: " + hash
+    # 1. Hashing (SHA-256, SHA-512)
+    let h256 = crypto::sha256("Hello, Alya!")
+    say "SHA-256: " + h256
 
-    # 2. HMAC Signatures
-    let sig = crypto::hmac_sha256("my-secret-key", "data-to-sign")
-    say "HMAC: " + sig
+    let h512 = crypto::sha512("Hello, Alya!")
+    say "SHA-512: " + h512
 
-    # 3. Base64 & Base64URL
-    let encoded = crypto::base64url_encode("token payload")
-    say "Base64URL: " + encoded
+    # 2. Symmetric Ciphers: AES-128-CBC
+    let key = crypto::hex_to_bytes("2b7e151628aed2a6abf7158809cf4f3c")
+    let iv = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f")
+    let encrypted_hex = crypto::aes_cbc_encrypt(key, iv, "Secret Message")
+    let decrypted_str = crypto::aes_cbc_decrypt(key, iv, encrypted_hex)
+    say "AES-CBC Decrypted: " + decrypted_str
 
-    # 4. Constant-Time Verification
-    let valid = crypto::constant_time_eq(sig, "expected_signature")
-    if valid
-        say "Signature verified!"
-    end
+    # 3. Stream Cipher: ChaCha20 (RFC 8439)
+    let cc_key = crypto::random_bytes(32)
+    let cc_nonce = crypto::random_bytes(12)
+    let cc_enc = crypto::chacha20_encrypt(cc_key, cc_nonce, 1, "ChaCha20 Payload")
+    let cc_dec = crypto::chacha20_decrypt(cc_key, cc_nonce, 1, cc_enc)
+    say "ChaCha20 Decrypted: " + cc_dec
 
-    # 5. UUID v4 Generation
-    let id = crypto::random_uuid()
-    say "UUID: " + id
+    # 4. Encodings: Base32 & Base58
+    say "Base32: " + crypto::base32_encode("foobar")
+    say "Base58: " + crypto::base58_encode("Hello World")
+
+    # 5. HKDF Key Derivation
+    let prk = crypto::hkdf_extract_bytes(iv, key)
+    let okm = crypto::hkdf_expand_bytes(prk, [1, 2, 3], 32)
+    say "Derived key bytes len: " + len(okm)
 end
 
 main()
@@ -114,82 +137,66 @@ main()
 ### Hash Functions
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
+| `sha512(msg)` | `msg: string` | `string` | Computes SHA-512 digest as 128-char hex string. |
+| `sha512_bytes(bytes)` | `bytes: list` | `list` | Computes SHA-512 digest returning 64 byte array. |
+| `sha384(msg)` | `msg: string` | `string` | Computes SHA-384 digest as 96-char hex string. |
+| `sha384_bytes(bytes)` | `bytes: list` | `list` | Computes SHA-384 digest returning 48 byte array. |
 | `sha256(msg)` | `msg: string` | `string` | Computes SHA-256 digest as 64-char hex string. |
 | `sha256_bytes(bytes)` | `bytes: list` | `list` | Computes SHA-256 digest returning 32 byte array. |
 | `sha224(msg)` | `msg: string` | `string` | Computes SHA-224 digest as 56-char hex string. |
 | `sha224_bytes(bytes)` | `bytes: list` | `list` | Computes SHA-224 digest returning 28 byte array. |
 | `sha1(msg)` | `msg: string` | `string` | Computes SHA-1 digest as 40-char hex string. |
-| `sha1_bytes(bytes)` | `bytes: list` | `list` | Computes SHA-1 digest returning 20 byte array. |
 | `md5(msg)` | `msg: string` | `string` | Computes MD5 digest as 32-char hex string. |
-| `md5_bytes(bytes)` | `bytes: list` | `list` | Computes MD5 digest returning 16 byte array. |
 
 ### Message Authentication (HMAC)
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
+| `hmac_sha512(key, msg)` | `key: string, msg: string` | `string` | Computes HMAC-SHA512 digest as hex string. |
+| `hmac_sha384(key, msg)` | `key: string, msg: string` | `string` | Computes HMAC-SHA384 digest as hex string. |
 | `hmac_sha256(key, msg)` | `key: string, msg: string` | `string` | Computes HMAC-SHA256 digest as hex string. |
-| `hmac_sha256_bytes(k, m)` | `k: list, m: list` | `list` | Computes HMAC-SHA256 returning 32 byte array. |
 | `hmac_sha1(key, msg)` | `key: string, msg: string` | `string` | Computes HMAC-SHA1 digest as hex string. |
 | `hmac_md5(key, msg)` | `key: string, msg: string` | `string` | Computes HMAC-MD5 digest as hex string. |
 
-### Encodings & Conversions
+### Ciphers
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
-| `hex_encode(s)` | `s: string` | `string` | Encodes string to lowercase hexadecimal. |
-| `hex_decode(s)` | `s: string` | `string` | Decodes hexadecimal string to original string. |
-| `bytes_to_hex(bytes)` | `bytes: list` | `string` | Converts byte array to hex string. |
-| `hex_to_bytes(s)` | `s: string` | `list` | Converts hex string to byte array. |
-| `is_hex(s)` | `s: string` | `int` | Returns `1` if valid hex string, else `0`. |
-| `base64_encode(s)` | `s: string` | `string` | Encodes string to standard Base64 with padding. |
-| `base64_decode(s)` | `s: string` | `string` | Decodes standard Base64 string. |
-| `base64url_encode(s)` | `s: string` | `string` | URL-safe Base64 without `=` padding (RFC 7515). |
-| `base64url_decode(s)` | `s: string` | `string` | Decodes URL-safe Base64 string. |
+| `aes_cbc_encrypt(k, iv, pt)` | `k: list, iv: list, pt: str` | `string` | AES-128 / AES-256 CBC encryption with PKCS#7 (hex). |
+| `aes_cbc_decrypt(k, iv, ct)` | `k: list, iv: list, ct: str` | `string` | AES-128 / AES-256 CBC decryption with PKCS#7. |
+| `aes_ctr_encrypt(k, iv, pt)` | `k: list, iv: list, pt: str` | `string` | AES-128 / AES-256 CTR stream encryption (hex). |
+| `aes_ctr_decrypt(k, iv, ct)` | `k: list, iv: list, ct: str` | `string` | AES-128 / AES-256 CTR stream decryption. |
+| `chacha20_encrypt(k, n, ctr, pt)` | `k: list, n: list, ctr: int, pt: str` | `string` | ChaCha20 stream encryption (RFC 8439). |
+| `chacha20_decrypt(k, n, ctr, ct)` | `k: list, n: list, ctr: int, ct: str` | `string` | ChaCha20 stream decryption (RFC 8439). |
+| `rc4_encrypt(key, pt)` | `key: str, pt: str` | `string` | RC4 stream encryption (hex). |
+| `rc4_decrypt(key, ct)` | `key: str, ct: str` | `string` | RC4 stream decryption. |
 
 ### Key Derivation (KDF)
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
+| `hkdf(salt, ikm, info, len)` | `salt: str, ikm: str, info: str, len: int` | `string` | RFC 5869 HKDF Extract-and-Expand. |
+| `hkdf_hex(salt, ikm, info, len)` | `salt: str, ikm: str, info: str, len: int` | `string` | HKDF with hex inputs/outputs. |
 | `pbkdf2_hmac_sha256(pwd, salt, iters, len)` | `pwd: str, salt: str, iters: int, len: int` | `string` | Derives key via PBKDF2 returning hex string. |
-| `pbkdf2_hmac_sha256_bytes(p, s, iters, len)` | `p: list, s: list, iters: int, len: int` | `list` | Derives key via PBKDF2 returning byte array. |
 
-### Security & Randomness
+### Encodings & Conversions
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
-| `constant_time_eq(a, b)` | `a: string, b: string` | `int` | Constant-time string comparison (timing attack safe). |
-| `constant_time_eq_bytes(a, b)` | `a: list, b: list` | `int` | Constant-time byte array comparison. |
-| `random_bytes(count)` | `count: int` | `list` | Generates `count` random bytes. |
-| `random_hex(count)` | `count: int` | `string` | Generates random hex string of length `count * 2`. |
-| `random_uuid()` | none | `string` | Generates RFC 4122 version 4 random UUID. |
+| `base32_encode(s)` | `s: string` | `string` | RFC 4648 Base32 encoder with padding. |
+| `base32_decode(s)` | `s: string` | `string` | RFC 4648 Base32 decoder. |
+| `is_base32(s)` | `s: string` | `int` | Validates RFC 4648 Base32 string. |
+| `base58_encode(s)` | `s: string` | `string` | Bitcoin Base58 encoder. |
+| `base58_decode(s)` | `s: string` | `string` | Bitcoin Base58 decoder. |
+| `is_base58(s)` | `s: string` | `int` | Validates Bitcoin Base58 string. |
+| `hex_encode(s)` | `s: string` | `string` | Encodes string to lowercase hexadecimal. |
+| `hex_decode(s)` | `s: string` | `string` | Decodes hexadecimal string to original string. |
+| `base64_encode(s)` | `s: string` | `string` | Standard Base64 with padding. |
+| `base64url_encode(s)` | `s: string` | `string` | URL-safe Base64 without padding (RFC 7515). |
 
 ---
 
-## 🧪 Running Tests & Benchmarks
+## 🧪 Running Tests
 
 ```bash
-# Run test suite
 alyac run tests/test_basic.alya
-
-# Run benchmarks
-alyac run benches/bench_basic.alya
-
-# Run demo
-alyac run examples/demo.alya
 ```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository and clone it locally
-2. Install dependencies:
-   ```bash
-   alyac install
-   ```
-3. Create your feature branch (`git checkout -b feature/my-feature`)
-4. Verify tests and formatting before opening a PR:
-   ```bash
-   alyac test
-   alyac fmt . --check
-   ```
-5. Commit your changes (`git commit -m "feat: add feature"`) and open a Pull Request
 
 ---
 

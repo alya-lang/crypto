@@ -1,0 +1,168 @@
+# ChaCha20 Stream Cipher (RFC 8439)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../core/bits.alya"
+import "../encodings/hex.alya"
+
+function _u32_le(byte_arr, offset)
+    let b0 = byte_arr[offset]
+    let b1 = byte_arr[offset + 1]
+    let b2 = byte_arr[offset + 2]
+    let b3 = byte_arr[offset + 3]
+    return bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
+end
+
+function chacha20_block(key_bytes, counter, nonce_bytes)
+    let state = [
+        1634760805, 857760878,  2036477234, 1797285236,
+        _u32_le(key_bytes, 0),  _u32_le(key_bytes, 4),  _u32_le(key_bytes, 8),  _u32_le(key_bytes, 12),
+        _u32_le(key_bytes, 16), _u32_le(key_bytes, 20), _u32_le(key_bytes, 24), _u32_le(key_bytes, 28),
+        counter,
+        _u32_le(nonce_bytes, 0), _u32_le(nonce_bytes, 4), _u32_le(nonce_bytes, 8)
+    ]
+
+    let working = []
+    let i = 0
+    while i < 16
+        working.push(state[i])
+        i += 1
+    end
+
+    let round = 0
+    while round < 10
+        # Column round
+        working[0] = bit_and(working[0] + working[4], 4294967295)
+        working[12] = rotl32(bit_xor(working[12], working[0]), 16)
+        working[8] = bit_and(working[8] + working[12], 4294967295)
+        working[4] = rotl32(bit_xor(working[4], working[8]), 12)
+        working[0] = bit_and(working[0] + working[4], 4294967295)
+        working[12] = rotl32(bit_xor(working[12], working[0]), 8)
+        working[8] = bit_and(working[8] + working[12], 4294967295)
+        working[4] = rotl32(bit_xor(working[4], working[8]), 7)
+
+        working[1] = bit_and(working[1] + working[5], 4294967295)
+        working[13] = rotl32(bit_xor(working[13], working[1]), 16)
+        working[9] = bit_and(working[9] + working[13], 4294967295)
+        working[5] = rotl32(bit_xor(working[5], working[9]), 12)
+        working[1] = bit_and(working[1] + working[5], 4294967295)
+        working[13] = rotl32(bit_xor(working[13], working[1]), 8)
+        working[9] = bit_and(working[9] + working[13], 4294967295)
+        working[5] = rotl32(bit_xor(working[5], working[9]), 7)
+
+        working[2] = bit_and(working[2] + working[6], 4294967295)
+        working[14] = rotl32(bit_xor(working[14], working[2]), 16)
+        working[10] = bit_and(working[10] + working[14], 4294967295)
+        working[6] = rotl32(bit_xor(working[6], working[10]), 12)
+        working[2] = bit_and(working[2] + working[6], 4294967295)
+        working[14] = rotl32(bit_xor(working[14], working[2]), 8)
+        working[10] = bit_and(working[10] + working[14], 4294967295)
+        working[6] = rotl32(bit_xor(working[6], working[10]), 7)
+
+        working[3] = bit_and(working[3] + working[7], 4294967295)
+        working[15] = rotl32(bit_xor(working[15], working[3]), 16)
+        working[11] = bit_and(working[11] + working[15], 4294967295)
+        working[7] = rotl32(bit_xor(working[7], working[11]), 12)
+        working[3] = bit_and(working[3] + working[7], 4294967295)
+        working[15] = rotl32(bit_xor(working[15], working[3]), 8)
+        working[11] = bit_and(working[11] + working[15], 4294967295)
+        working[7] = rotl32(bit_xor(working[7], working[11]), 7)
+
+        # Diagonal round
+        working[0] = bit_and(working[0] + working[5], 4294967295)
+        working[15] = rotl32(bit_xor(working[15], working[0]), 16)
+        working[10] = bit_and(working[10] + working[15], 4294967295)
+        working[5] = rotl32(bit_xor(working[5], working[10]), 12)
+        working[0] = bit_and(working[0] + working[5], 4294967295)
+        working[15] = rotl32(bit_xor(working[15], working[0]), 8)
+        working[10] = bit_and(working[10] + working[15], 4294967295)
+        working[5] = rotl32(bit_xor(working[5], working[10]), 7)
+
+        working[1] = bit_and(working[1] + working[6], 4294967295)
+        working[12] = rotl32(bit_xor(working[12], working[1]), 16)
+        working[11] = bit_and(working[11] + working[12], 4294967295)
+        working[6] = rotl32(bit_xor(working[6], working[11]), 12)
+        working[1] = bit_and(working[1] + working[6], 4294967295)
+        working[12] = rotl32(bit_xor(working[12], working[1]), 8)
+        working[11] = bit_and(working[11] + working[12], 4294967295)
+        working[6] = rotl32(bit_xor(working[6], working[11]), 7)
+
+        working[2] = bit_and(working[2] + working[7], 4294967295)
+        working[13] = rotl32(bit_xor(working[13], working[2]), 16)
+        working[8] = bit_and(working[8] + working[13], 4294967295)
+        working[7] = rotl32(bit_xor(working[7], working[8]), 12)
+        working[2] = bit_and(working[2] + working[7], 4294967295)
+        working[13] = rotl32(bit_xor(working[13], working[2]), 8)
+        working[8] = bit_and(working[8] + working[13], 4294967295)
+        working[7] = rotl32(bit_xor(working[7], working[8]), 7)
+
+        working[3] = bit_and(working[3] + working[4], 4294967295)
+        working[14] = rotl32(bit_xor(working[14], working[3]), 16)
+        working[9] = bit_and(working[9] + working[14], 4294967295)
+        working[4] = rotl32(bit_xor(working[4], working[9]), 12)
+        working[3] = bit_and(working[3] + working[4], 4294967295)
+        working[14] = rotl32(bit_xor(working[14], working[3]), 8)
+        working[9] = bit_and(working[9] + working[14], 4294967295)
+        working[4] = rotl32(bit_xor(working[4], working[9]), 7)
+
+        round += 1
+    end
+
+    let block_out = []
+    i = 0
+    while i < 16
+        let sum_val = bit_and(working[i] + state[i], 4294967295)
+        block_out.push(bit_and(sum_val, 255))
+        block_out.push(bit_and(bit_shr(sum_val, 8), 255))
+        block_out.push(bit_and(bit_shr(sum_val, 16), 255))
+        block_out.push(bit_and(bit_shr(sum_val, 24), 255))
+        i += 1
+    end
+
+    return block_out
+end
+
+function chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, data_bytes)
+    let out = []
+    let dlen = len(data_bytes)
+    let curr_counter = initial_counter
+    let offset = 0
+
+    while offset < dlen
+        let key_stream = chacha20_block(key_bytes, curr_counter, nonce_bytes)
+        let block_len = 64
+        if offset + block_len > dlen
+            block_len = dlen - offset
+        end
+
+        let i = 0
+        while i < block_len
+            out.push(bit_xor(data_bytes[offset + i], key_stream[i]))
+            i += 1
+        end
+
+        curr_counter = bit_and(curr_counter + 1, 4294967295)
+        offset += block_len
+    end
+
+    return out
+end
+
+function chacha20_encrypt_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
+    return chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
+end
+
+function chacha20_decrypt_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
+    return chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
+end
+
+function chacha20_encrypt(key_bytes, nonce_bytes, initial_counter, plaintext_str)
+    let p_bytes = str_to_bytes(plaintext_str)
+    let c_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, p_bytes)
+    return bytes_to_hex(c_bytes)
+end
+
+function chacha20_decrypt(key_bytes, nonce_bytes, initial_counter, ciphertext_hex)
+    let c_bytes = hex_to_bytes(ciphertext_hex)
+    let d_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, c_bytes)
+    return bytes_to_str(d_bytes)
+end

@@ -1,0 +1,158 @@
+# Base58 encoding and decoding utilities (Bitcoin alphabet)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+function base58_encode_bytes(bytes)
+    let b58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    let blen = len(bytes)
+    if blen == 0
+        return ""
+    end
+
+    # Count leading zeros
+    let zeroes = 0
+    while zeroes < blen and bytes[zeroes] == 0
+        zeroes += 1
+    end
+
+    # Convert bytes to base 58 digits
+    let digits = [0]
+    let i = zeroes
+    while i < blen
+        let carry = bytes[i]
+        let j = 0
+        let dlen = len(digits)
+        while j < dlen
+            carry += bit_shl(digits[j], 8)
+            digits[j] = carry % 58
+            carry = carry / 58
+            j += 1
+        end
+        while carry > 0
+            digits.push(carry % 58)
+            carry = carry / 58
+        end
+        i += 1
+    end
+
+    let res = ""
+    let z = 0
+    while z < zeroes
+        res = res + "1"
+        z += 1
+    end
+
+    let k = len(digits) - 1
+    while k >= 0
+        res = res + char_at(b58_chars, digits[k])
+        k -= 1
+    end
+    return res
+end
+
+function base58_encode(s)
+    let slen = len(s)
+    let bytes = []
+    let i = 0
+    while i < slen
+        bytes.push(ord(char_at(s, i)))
+        i += 1
+    end
+    return base58_encode_bytes(bytes)
+end
+
+function _b58_val(ch)
+    let b58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    let i = 0
+    while i < 58
+        if char_at(b58_chars, i) == ch
+            return i
+        end
+        i += 1
+    end
+    return 255
+end
+
+function base58_decode_bytes(s)
+    let slen = len(s)
+    if slen == 0
+        return []
+    end
+
+    let zeroes = 0
+    while zeroes < slen and char_at(s, zeroes) == "1"
+        zeroes += 1
+    end
+
+    let bytes = [0]
+    let i = zeroes
+    while i < slen
+        let val = _b58_val(char_at(s, i))
+        if val == 255
+            return []
+        end
+        let carry = val
+        let j = 0
+        let blen = len(bytes)
+        while j < blen
+            carry += bytes[j] * 58
+            bytes[j] = bit_and(carry, 255)
+            carry = bit_shr(carry, 8)
+            j += 1
+        end
+        while carry > 0
+            bytes.push(bit_and(carry, 255))
+            carry = bit_shr(carry, 8)
+        end
+        i += 1
+    end
+
+    let res = []
+    let z = 0
+    while z < zeroes
+        res.push(0)
+        z += 1
+    end
+
+    let k = len(bytes) - 1
+    while k >= 0
+        res.push(bytes[k])
+        k -= 1
+    end
+    return res
+end
+
+function base58_decode(s)
+    let bytes = base58_decode_bytes(s)
+    let res = ""
+    let blen = len(bytes)
+    let i = 0
+    while i < blen
+        res = res + chr(bytes[i])
+        i += 1
+    end
+    return res
+end
+
+function is_base58(s)
+    let slen = len(s)
+    if slen == 0
+        return 1
+    end
+    let i = 0
+    while i < slen
+        let ch = char_at(s, i)
+        if _b58_val(ch) == 255
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+function to_base58(s)
+    return base58_encode(s)
+end
+
+function from_base58(s)
+    return base58_decode(s)
+end

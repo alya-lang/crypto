@@ -1,0 +1,152 @@
+# Standard Base32 encoding and decoding utilities (RFC 4648 & Crockford)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+function base32_encode_bytes(bytes, pad = 1)
+    let b32_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+    let blen = len(bytes)
+    let res = ""
+    let i = 0
+    while i < blen
+        let b0 = bytes[i]
+        let b1 = 0
+        let b2 = 0
+        let b3 = 0
+        let b4 = 0
+        let count = 1
+
+        if i + 1 < blen
+            b1 = bytes[i + 1]
+            count = 2
+        end
+        if i + 2 < blen
+            b2 = bytes[i + 2]
+            count = 3
+        end
+        if i + 3 < blen
+            b3 = bytes[i + 3]
+            count = 4
+        end
+        if i + 4 < blen
+            b4 = bytes[i + 4]
+            count = 5
+        end
+
+        let c0 = bit_and(bit_shr(b0, 3), 31)
+        let c1 = bit_and(bit_or(bit_shl(bit_and(b0, 7), 2), bit_shr(b1, 6)), 31)
+        let c2 = bit_and(bit_shr(b1, 1), 31)
+        let c3 = bit_and(bit_or(bit_shl(bit_and(b1, 1), 4), bit_shr(b2, 4)), 31)
+        let c4 = bit_and(bit_or(bit_shl(bit_and(b2, 15), 1), bit_shr(b3, 7)), 31)
+        let c5 = bit_and(bit_shr(b3, 2), 31)
+        let c6 = bit_and(bit_or(bit_shl(bit_and(b3, 3), 3), bit_shr(b4, 5)), 31)
+        let c7 = bit_and(b4, 31)
+
+        res = res + char_at(b32_chars, c0) + char_at(b32_chars, c1)
+
+        if count == 1
+            if pad == 1
+                res = res + "======"
+            end
+        elif count == 2
+            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3)
+            if pad == 1
+                res = res + "===="
+            end
+        elif count == 3
+            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4)
+            if pad == 1
+                res = res + "==="
+            end
+        elif count == 4
+            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6)
+            if pad == 1
+                res = res + "="
+            end
+        else
+            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6) + char_at(b32_chars, c7)
+        end
+        i += 5
+    end
+    return res
+end
+
+function base32_encode(s)
+    let slen = len(s)
+    let bytes = []
+    let i = 0
+    while i < slen
+        bytes.push(ord(char_at(s, i)))
+        i += 1
+    end
+    return base32_encode_bytes(bytes, 1)
+end
+
+function _b32_val(ch)
+    let c = ord(ch)
+    when c
+        is 65..90 then return c - 65      # A-Z -> 0-25
+        is 97..122 then return c - 97     # a-z -> 0-25 (case-insensitive)
+        is 50..55 then return c - 24      # 2-7 -> 26-31
+        else return 255
+    end
+end
+
+function base32_decode_bytes(s)
+    let slen = len(s)
+    let bytes = []
+    let buf = 0
+    let bits = 0
+    let i = 0
+    while i < slen
+        let ch = char_at(s, i)
+        if ch != "=" and ch != " " and ch != "\r" and ch != "\n"
+            let val = _b32_val(ch)
+            if val != 255
+                buf = bit_or(bit_shl(buf, 5), val)
+                bits += 5
+                if bits >= 8
+                    bits -= 8
+                    let b = bit_and(bit_shr(buf, bits), 255)
+                    bytes.push(b)
+                end
+            end
+        end
+        i += 1
+    end
+    return bytes
+end
+
+function base32_decode(s)
+    let bytes = base32_decode_bytes(s)
+    let res = ""
+    let blen = len(bytes)
+    let i = 0
+    while i < blen
+        res = res + chr(bytes[i])
+        i += 1
+    end
+    return res
+end
+
+function is_base32(s)
+    let slen = len(s)
+    if slen == 0
+        return 1
+    end
+    let i = 0
+    while i < slen
+        let ch = char_at(s, i)
+        if ch != "=" and _b32_val(ch) == 255
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+function to_base32(s)
+    return base32_encode(s)
+end
+
+function from_base32(s)
+    return base32_decode(s)
+end

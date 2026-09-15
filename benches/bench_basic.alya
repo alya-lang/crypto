@@ -1,21 +1,30 @@
-# Benchmark suite for crypto
+# Comprehensive Benchmark suite for crypto v0.4.0
 import "std/bench"
 import "../src/lib.alya" as crypto
 
 function main()
-    let runner = bench_runner("crypto Micro-Benchmarks")
+    let runner = bench_runner("crypto Micro-Benchmarks v0.4.0")
+    let msg = "The quick brown fox jumps over the lazy dog"
 
     # 1. SHA-256
     bench_start(runner, 2000)
     let i = 0
-    let msg = "The quick brown fox jumps over the lazy dog"
     while i < 2000
         crypto::sha256(msg)
         i += 1
     end
     bench_stop(runner, "sha256() 2,000 hashes")
 
-    # 2. SHA-1
+    # 2. SHA-512
+    bench_start(runner, 1000)
+    let s5 = 0
+    while s5 < 1000
+        crypto::sha512(msg)
+        s5 += 1
+    end
+    bench_stop(runner, "sha512() 1,000 hashes")
+
+    # 3. SHA-1
     bench_start(runner, 2000)
     let j = 0
     while j < 2000
@@ -24,7 +33,7 @@ function main()
     end
     bench_stop(runner, "sha1() 2,000 hashes")
 
-    # 3. MD5
+    # 4. MD5
     bench_start(runner, 2000)
     let k = 0
     while k < 2000
@@ -33,7 +42,7 @@ function main()
     end
     bench_stop(runner, "md5() 2,000 hashes")
 
-    # 4. HMAC-SHA256
+    # 5. HMAC-SHA256
     bench_start(runner, 1000)
     let m = 0
     let key = "secret-hmac-key"
@@ -43,7 +52,7 @@ function main()
     end
     bench_stop(runner, "hmac_sha256() 1,000 operations")
 
-    # 5. Base64 encode
+    # 6. Base64 Encode
     bench_start(runner, 5000)
     let n = 0
     while n < 5000
@@ -51,6 +60,67 @@ function main()
         n += 1
     end
     bench_stop(runner, "base64_encode() 5,000 operations")
+
+    # 7. Base32 Encode (RFC 4648)
+    bench_start(runner, 2000)
+    let b32_i = 0
+    while b32_i < 2000
+        crypto::base32_encode(msg)
+        b32_i += 1
+    end
+    bench_stop(runner, "base32_encode() 2,000 operations")
+
+    # 8. Base58 Encode (Bitcoin)
+    bench_start(runner, 1000)
+    let b58_i = 0
+    while b58_i < 1000
+        crypto::base58_encode(msg)
+        b58_i += 1
+    end
+    bench_stop(runner, "base58_encode() 1,000 operations")
+
+    # 9. RC4 Stream Cipher
+    bench_start(runner, 2000)
+    let rc4_i = 0
+    while rc4_i < 2000
+        crypto::rc4_encrypt("Key", msg)
+        rc4_i += 1
+    end
+    bench_stop(runner, "rc4_encrypt() 2,000 operations")
+
+    # 10. ChaCha20 Stream Cipher (RFC 8439)
+    let cc_k = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+    let cc_n = crypto::hex_to_bytes("000000090000004a00000000")
+    bench_start(runner, 1000)
+    let cc_i = 0
+    while cc_i < 1000
+        crypto::chacha20_encrypt(cc_k, cc_n, 1, msg)
+        cc_i += 1
+    end
+    bench_stop(runner, "chacha20_encrypt() 1,000 operations")
+
+    # 11. AES-128-CTR Mode
+    let aes_k = crypto::hex_to_bytes("2b7e151628aed2a6abf7158809cf4f3c")
+    let aes_iv = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f")
+    bench_start(runner, 500)
+    let aes_i = 0
+    while aes_i < 500
+        crypto::aes_ctr_encrypt(aes_k, aes_iv, msg)
+        aes_i += 1
+    end
+    bench_stop(runner, "aes_ctr_encrypt() 500 operations")
+
+    # 12. HKDF Key Derivation
+    let salt_hex = "000102030405060708090a0b0c"
+    let ikm_hex = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+    let info_hex = "f0f1f2f3f4f5f6f7f8f9"
+    bench_start(runner, 500)
+    let hkdf_i = 0
+    while hkdf_i < 500
+        crypto::hkdf_hex(salt_hex, ikm_hex, info_hex, 32)
+        hkdf_i += 1
+    end
+    bench_stop(runner, "hkdf_hex() 500 operations")
 
     bench_summary(runner)
 end

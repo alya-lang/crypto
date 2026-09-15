@@ -1,0 +1,54 @@
+# Symmetric Ciphers & Authenticated Encryption Example
+import "../src/lib.alya" as crypto
+
+function main()
+    say "=== Alya Symmetric Ciphers & Encrypt-then-MAC Demo ==="
+    say ""
+
+    # Sensitive data to protect
+    let secret_payload = "Confidential financial record: Account #987654321 transferred $50,000."
+    say "Original Payload:"
+    say secret_payload
+    say ""
+
+    # Generate cryptographic keys
+    # AES-256 requires 32-byte key, 16-byte IV
+    let aes_key = crypto::random_bytes(32)
+    let aes_iv = crypto::random_bytes(16)
+    let hmac_key = crypto::random_bytes(32)
+
+    say "1. Encrypting with AES-256-CBC..."
+    let ciphertext_hex = crypto::aes_cbc_encrypt(aes_key, aes_iv, secret_payload)
+    say "   Ciphertext: " + ciphertext_hex
+
+    say "2. Generating HMAC-SHA256 authentication tag (Encrypt-then-MAC)..."
+    let auth_tag = crypto::hmac_sha256(crypto::bytes_to_hex(hmac_key), ciphertext_hex)
+    say "   Auth Tag:   " + auth_tag
+    say ""
+
+    # Receiver Verification & Decryption
+    say "3. Verifying payload integrity..."
+    let computed_tag = crypto::hmac_sha256(crypto::bytes_to_hex(hmac_key), ciphertext_hex)
+    let is_valid = crypto::constant_time_eq(auth_tag, computed_tag)
+    if is_valid == 1
+        say "   ✓ Authentication tag verified (timing-safe check passed)!"
+        let decrypted = crypto::aes_cbc_decrypt(aes_key, aes_iv, ciphertext_hex)
+        say "   Decrypted:  " + decrypted
+    else
+        say "   ✗ Tampering detected! Aborting decryption."
+    end
+    say ""
+
+    # 4. ChaCha20 Stream Cipher Demo
+    say "4. ChaCha20 Stream Encryption (RFC 8439)..."
+    let cc_key = crypto::random_bytes(32)
+    let cc_nonce = crypto::random_bytes(12)
+    let cc_ct = crypto::chacha20_encrypt(cc_key, cc_nonce, 1, secret_payload)
+    say "   ChaCha20 Ciphertext: " + cc_ct
+    let cc_pt = crypto::chacha20_decrypt(cc_key, cc_nonce, 1, cc_ct)
+    say "   ChaCha20 Decrypted:  " + cc_pt
+    say ""
+    say "✓ Ciphers demo completed successfully!"
+end
+
+main()

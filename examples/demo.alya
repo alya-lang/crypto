@@ -1,4 +1,4 @@
-# Comprehensive demonstration of crypto package
+# Comprehensive demonstration of crypto package v0.4.0
 import "../src/lib.alya" as crypto
 
 function main()
@@ -8,6 +8,9 @@ function main()
     # 1. Hashing Algorithms
     let message = "Hello, Alya Ecosystem!"
     say "Message: " + message
+    say "--- Hash Functions ---"
+    say "SHA-512 : " + crypto::sha512(message)
+    say "SHA-384 : " + crypto::sha384(message)
     say "SHA-256 : " + crypto::sha256(message)
     say "SHA-224 : " + crypto::sha224(message)
     say "SHA-1   : " + crypto::sha1(message)
@@ -20,23 +23,66 @@ function main()
     say "Hex       : " + hex_val
     say "Base64    : " + crypto::base64_encode(message)
     say "Base64URL : " + crypto::base64url_encode(message)
+    say "Base32    : " + crypto::base32_encode(message)
+    say "Base58    : " + crypto::base58_encode(message)
     say ""
 
     # 3. Message Authentication (HMAC)
     say "--- HMAC Signatures ---"
     let secret_key = "super-secret-key"
+    say "HMAC-SHA512 : " + crypto::hmac_sha512(secret_key, message)
+    say "HMAC-SHA384 : " + crypto::hmac_sha384(secret_key, message)
     say "HMAC-SHA256 : " + crypto::hmac_sha256(secret_key, message)
     say "HMAC-SHA1   : " + crypto::hmac_sha1(secret_key, message)
     say "HMAC-MD5    : " + crypto::hmac_md5(secret_key, message)
     say ""
 
-    # 4. Key Derivation (PBKDF2)
-    say "--- Key Derivation (PBKDF2) ---"
-    let derived = crypto::pbkdf2_hmac_sha256("user-password", "salt-value", 100, 32)
-    say "PBKDF2 (100 iters, 32 bytes) : " + derived
+    # 4. Key Derivation (PBKDF2 & HKDF)
+    say "--- Key Derivation (PBKDF2 & HKDF) ---"
+    let derived_pbkdf2 = crypto::pbkdf2_hmac_sha256("user-password", "salt-value", 100, 32)
+    say "PBKDF2 (100 iters, 32 bytes) : " + derived_pbkdf2
+
+    let ikm_hex = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+    let salt_hex = "000102030405060708090a0b0c"
+    let info_hex = "f0f1f2f3f4f5f6f7f8f9"
+    let okm_hex = crypto::hkdf_hex(salt_hex, ikm_hex, info_hex, 32)
+    say "HKDF (32 bytes derived key)  : " + okm_hex
     say ""
 
-    # 5. Security & Randomness
+    # 5. Symmetric Ciphers (AES, ChaCha20, RC4)
+    say "--- Symmetric Ciphers ---"
+    let aes_k128 = crypto::hex_to_bytes("2b7e151628aed2a6abf7158809cf4f3c")
+    let aes_iv = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f")
+    let secret_text = "Top-secret document payload protected with Alya ciphers."
+
+    # AES-128-CBC
+    let cbc_ct = crypto::aes_cbc_encrypt(aes_k128, aes_iv, secret_text)
+    let cbc_pt = crypto::aes_cbc_decrypt(aes_k128, aes_iv, cbc_ct)
+    say "AES-128-CBC Ciphertext : " + cbc_ct
+    say "AES-128-CBC Decrypted  : " + cbc_pt
+
+    # AES-128-CTR
+    let ctr_ct = crypto::aes_ctr_encrypt(aes_k128, aes_iv, secret_text)
+    let ctr_pt = crypto::aes_ctr_decrypt(aes_k128, aes_iv, ctr_ct)
+    say "AES-128-CTR Ciphertext : " + ctr_ct
+    say "AES-128-CTR Decrypted  : " + ctr_pt
+
+    # ChaCha20
+    let cc_key = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+    let cc_nonce = crypto::hex_to_bytes("000000090000004a00000000")
+    let cc_ct = crypto::chacha20_encrypt(cc_key, cc_nonce, 1, secret_text)
+    let cc_pt = crypto::chacha20_decrypt(cc_key, cc_nonce, 1, cc_ct)
+    say "ChaCha20 Ciphertext    : " + cc_ct
+    say "ChaCha20 Decrypted     : " + cc_pt
+
+    # RC4
+    let rc4_ct = crypto::rc4_encrypt("session-key", secret_text)
+    let rc4_pt = crypto::rc4_decrypt("session-key", rc4_ct)
+    say "RC4 Ciphertext         : " + rc4_ct
+    say "RC4 Decrypted          : " + rc4_pt
+    say ""
+
+    # 6. Security & Randomness
     say "--- Security & Randomness ---"
     say "Random Hex (16 bytes) : " + crypto::random_hex(16)
     say "Random UUID v4        : " + crypto::random_uuid()

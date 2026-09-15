@@ -1,0 +1,214 @@
+# SHA-512 and SHA-384 Cryptographic Hash Functions (FIPS 180-4)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../core/bits.alya"
+import "../encodings/hex.alya"
+
+function _sha512_k()
+    return [
+        u64(1116352408, 3609767458), u64(1899447441, 602891725), u64(3049323471, 3964484399), u64(3921009573, 2173295548),
+        u64(961987163, 4081628472), u64(1508970993, 3053834265), u64(2453635748, 2937671579), u64(2870763221, 3664609560),
+        u64(3624381080, 2734883394), u64(310598401, 1164996542), u64(607225278, 1323610764), u64(1426881987, 3590304994),
+        u64(1925078388, 4068182383), u64(2162078206, 991336113), u64(2614888103, 633803317), u64(3248222580, 3479774868),
+        u64(3835390401, 2666613458), u64(4022224774, 944711139), u64(264347078, 2341262773), u64(604807628, 2007800933),
+        u64(770255983, 1495990901), u64(1249150122, 1856431235), u64(1555081692, 3175218132), u64(1996064986, 2198950837),
+        u64(2554220882, 3999719339), u64(2821834349, 766784016), u64(2952996808, 2566594879), u64(3210313671, 3203337956),
+        u64(3336571891, 1034457026), u64(3584528711, 2466948901), u64(113926993, 3758326383), u64(338241895, 168717936),
+        u64(666307205, 1188179964), u64(773529912, 1546045734), u64(1294757372, 1522805485), u64(1396182291, 2643833823),
+        u64(1695183700, 2343527390), u64(1986661051, 1014477480), u64(2177026350, 1206759142), u64(2456956037, 344077627),
+        u64(2730485921, 1290863460), u64(2820302411, 3158454273), u64(3259730800, 3505952657), u64(3345764771, 106217008),
+        u64(3516065817, 3606008344), u64(3600352804, 1432725776), u64(4094571909, 1467031594), u64(275423344, 851169720),
+        u64(430227734, 3100823752), u64(506948616, 1363258195), u64(659060556, 3750685593), u64(883997877, 3785050280),
+        u64(958139571, 3318307427), u64(1322822218, 3812723403), u64(1537002063, 2003034995), u64(1747873779, 3602036899),
+        u64(1955562222, 1575990012), u64(2024104815, 1125592928), u64(2227730452, 2716904306), u64(2361852424, 442776044),
+        u64(2428436474, 593698344), u64(2756734187, 3733110249), u64(3204031479, 2999351573), u64(3329325298, 3815920427),
+        u64(3391569614, 3928383900), u64(3515267271, 566280711), u64(3940187606, 3454069534), u64(4118630271, 4000239992),
+        u64(116418474, 1914138554), u64(174292421, 2731055270), u64(289380356, 3203993006), u64(460393269, 320620315),
+        u64(685471733, 587496836), u64(852142971, 1086792851), u64(1017036298, 365543100), u64(1126000580, 2618297676),
+        u64(1288033470, 3409855158), u64(1501505948, 4234509866), u64(1607167915, 987167468), u64(1816402316, 1246189591)
+    ]
+end
+
+function _get_u64_be(bytes, offset)
+    let hi = bit_or(bit_shl(bytes[offset], 24), bit_shl(bytes[offset + 1], 16))
+    hi = bit_or(hi, bit_shl(bytes[offset + 2], 8))
+    hi = bit_or(hi, bytes[offset + 3])
+
+    let lo = bit_or(bit_shl(bytes[offset + 4], 24), bit_shl(bytes[offset + 5], 16))
+    lo = bit_or(lo, bit_shl(bytes[offset + 6], 8))
+    lo = bit_or(lo, bytes[offset + 7])
+
+    return u64(hi, lo)
+end
+
+function _append_u64_bytes(val, out)
+    out.push(bit_and(bit_shr(val, 56), 255))
+    out.push(bit_and(bit_shr(val, 48), 255))
+    out.push(bit_and(bit_shr(val, 40), 255))
+    out.push(bit_and(bit_shr(val, 32), 255))
+    out.push(bit_and(bit_shr(val, 24), 255))
+    out.push(bit_and(bit_shr(val, 16), 255))
+    out.push(bit_and(bit_shr(val, 8), 255))
+    out.push(bit_and(val, 255))
+end
+
+function _sha512_transform(data_bytes, is_384)
+    let msg_len = len(data_bytes)
+    let total_bits = msg_len * 8
+
+    # 1. Pad message to multiple of 128 bytes (1024 bits)
+    let bytes = []
+    let i = 0
+    while i < msg_len
+        bytes.push(data_bytes[i])
+        i += 1
+    end
+
+    bytes.push(128) # 0x80
+
+    while len(bytes) % 128 != 112
+        bytes.push(0)
+    end
+
+    # Append 128-bit length (upper 64 bits = 0, lower 64 bits = total_bits)
+    let z = 0
+    while z < 8
+        bytes.push(0)
+        z += 1
+    end
+
+    bytes.push(bit_and(bit_shr(total_bits, 56), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 48), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 40), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 32), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 24), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 16), 255))
+    bytes.push(bit_and(bit_shr(total_bits, 8), 255))
+    bytes.push(bit_and(total_bits, 255))
+
+    # 2. Initial hash values
+    let k = _sha512_k()
+    let h0, h1, h2, h3, h4, h5, h6, h7 = 0
+    if is_384 == 1
+        h0 = u64(3418070365, 3238371032) # 0xcbbb9d5dc1059ed8
+        h1 = u64(1654270250, 914150663)  # 0x629a292a367cd507
+        h2 = u64(2438529370, 812702999)  # 0x9159015a3070dd17
+        h3 = u64(355462360, 4144912697)  # 0x152fecd8f70e5939
+        h4 = u64(1731405415, 4290775857) # 0x67332667ffc00b31
+        h5 = u64(2394180231, 1750603025) # 0x8eb44a8768581511
+        h6 = u64(3675008525, 1694076839) # 0xdb0c2e0d64f98fa7
+        h7 = u64(1203062813, 3204075428) # 0x47b5481dbefa4fa4
+    else
+        h0 = u64(1779033703, 4089235720) # 0x6a09e667f3bcc908
+        h1 = u64(3144134277, 2227873595) # 0xbb67ae8584caa73b
+        h2 = u64(1013904242, 4271175723) # 0x3c6ef372fe94f82b
+        h3 = u64(2773480762, 1595750129) # 0xa54ff53a5f1d36f1
+        h4 = u64(1359893119, 2917565137) # 0x510e527fade682d1
+        h5 = u64(2600822924, 725511199)  # 0x9b05688c2b3e6c1f
+        h6 = u64(528734635, 4215389547)  # 0x1f83d9abfb41bd6b
+        h7 = u64(1541459225, 327033209)  # 0x5be0cd19137e2179
+    end
+
+    # 3. Process each 128-byte chunk
+    let chunk_idx = 0
+    let total_bytes = len(bytes)
+    while chunk_idx < total_bytes
+        let w = []
+        let j = 0
+        while j < 16
+            w.push(_get_u64_be(bytes, chunk_idx + j * 8))
+            j += 1
+        end
+
+        while j < 80
+            let w2 = w[j - 2]
+            let s1 = bit_xor(rotr64(w2, 19), bit_xor(rotr64(w2, 61), bit_shr(w2, 6)))
+            let w7 = w[j - 7]
+            let w15 = w[j - 15]
+            let s0 = bit_xor(rotr64(w15, 1), bit_xor(rotr64(w15, 8), bit_shr(w15, 7)))
+            let w16 = w[j - 16]
+            w.push(w16 + s0 + w7 + s1)
+            j += 1
+        end
+
+        let a = h0
+        let b = h1
+        let c = h2
+        let d = h3
+        let e = h4
+        let f = h5
+        let g = h6
+        let h = h7
+
+        let round = 0
+        while round < 80
+            let s1 = bit_xor(rotr64(e, 14), bit_xor(rotr64(e, 18), rotr64(e, 41)))
+            let ch = bit_xor(bit_and(e, f), bit_and(bit_not(e), g))
+            let temp1 = h + s1 + ch + k[round] + w[round]
+            let s0 = bit_xor(rotr64(a, 28), bit_xor(rotr64(a, 34), rotr64(a, 39)))
+            let maj = bit_xor(bit_and(a, b), bit_xor(bit_and(a, c), bit_and(b, c)))
+            let temp2 = s0 + maj
+
+            h = g
+            g = f
+            f = e
+            e = d + temp1
+            d = c
+            c = b
+            b = a
+            a = temp1 + temp2
+            round += 1
+        end
+
+        h0 = h0 + a
+        h1 = h1 + b
+        h2 = h2 + c
+        h3 = h3 + d
+        h4 = h4 + e
+        h5 = h5 + f
+        h6 = h6 + g
+        h7 = h7 + h
+        chunk_idx += 128
+    end
+
+    let out = []
+    _append_u64_bytes(h0, out)
+    _append_u64_bytes(h1, out)
+    _append_u64_bytes(h2, out)
+    _append_u64_bytes(h3, out)
+    _append_u64_bytes(h4, out)
+    _append_u64_bytes(h5, out)
+    if is_384 == 0
+        _append_u64_bytes(h6, out)
+        _append_u64_bytes(h7, out)
+    end
+    return out
+end
+
+function sha512_bytes(data_bytes)
+    return _sha512_transform(data_bytes, 0)
+end
+
+function sha512_hex(msg)
+    let bytes = str_to_bytes(msg)
+    let digest = sha512_bytes(bytes)
+    return bytes_to_hex(digest)
+end
+
+function sha512(msg)
+    return sha512_hex(msg)
+end
+
+function sha384_bytes(data_bytes)
+    return _sha512_transform(data_bytes, 1)
+end
+
+function sha384_hex(msg)
+    let bytes = str_to_bytes(msg)
+    let digest = sha384_bytes(bytes)
+    return bytes_to_hex(digest)
+end
+
+function sha384(msg)
+    return sha384_hex(msg)
+end
