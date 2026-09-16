@@ -10,6 +10,5 @@ homepage = "https://github.com/alya-lang/alya"
 repository = "https://github.com/alya-lang/crypto"
 keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "sha256", "sha512", "sha3", "keccak", "blake2s", "hmac", "poly1305", "hkdf", "pbkdf2", "aes", "chacha20", "rc4", "base32", "base58"]
 
-
 [dependencies]
-rand = { git = "https://github.com/alya-lang/rand", tag = "v0.2.0" }
+rand = { git = "https://github.com/alya-lang/rand", tag = "v0.3.0" }
