@@ -4,7 +4,7 @@
 import "../core/bits.alya"
 import "../encodings/hex.alya"
 
-function _u32_le(byte_arr, offset)
+pub function _u32_le(byte_arr, offset)
     let b0 = byte_arr[offset]
     let b1 = byte_arr[offset + 1]
     let b2 = byte_arr[offset + 2]
@@ -12,7 +12,7 @@ function _u32_le(byte_arr, offset)
     return bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
 end
 
-function chacha20_block(key_bytes, counter, nonce_bytes)
+pub function chacha20_block(key_bytes, counter, nonce_bytes)
     let state = [
         1634760805, 857760878,  2036477234, 1797285236,
         _u32_le(key_bytes, 0),  _u32_le(key_bytes, 4),  _u32_le(key_bytes, 8),  _u32_le(key_bytes, 12),
@@ -121,7 +121,7 @@ function chacha20_block(key_bytes, counter, nonce_bytes)
     return block_out
 end
 
-function chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, data_bytes)
+pub function chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, data_bytes)
     let out = []
     let dlen = len(data_bytes)
     let curr_counter = initial_counter
@@ -147,21 +147,21 @@ function chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, data_by
     return out
 end
 
-function chacha20_encrypt_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
+pub function chacha20_encrypt_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
     return chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
 end
 
-function chacha20_decrypt_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
+pub function chacha20_decrypt_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
     return chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
 end
 
-function chacha20_encrypt(key_bytes, nonce_bytes, initial_counter, plaintext_str)
+pub function chacha20_encrypt(key_bytes, nonce_bytes, initial_counter, plaintext_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let c_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, p_bytes)
     return bytes_to_hex(c_bytes)
 end
 
-function chacha20_decrypt(key_bytes, nonce_bytes, initial_counter, ciphertext_hex)
+pub function chacha20_decrypt(key_bytes, nonce_bytes, initial_counter, ciphertext_hex)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let d_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, c_bytes)
     return bytes_to_str(d_bytes)

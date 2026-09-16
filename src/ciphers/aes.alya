@@ -5,7 +5,7 @@
 
 import "../encodings/hex.alya"
 
-function get_aes_sbox()
+pub function get_aes_sbox()
     return [
         99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118,
         202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192,
@@ -26,7 +26,7 @@ function get_aes_sbox()
     ]
 end
 
-function get_aes_rsbox()
+pub function get_aes_rsbox()
     return [
         82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251,
         124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203,
@@ -47,11 +47,11 @@ function get_aes_rsbox()
     ]
 end
 
-function get_aes_rcon()
+pub function get_aes_rcon()
     return [0, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54]
 end
 
-function _aes_xtime(a)
+pub function _aes_xtime(a)
     let shifted = bit_shl(a, 1)
     if bit_and(a, 128) != 0
         return bit_and(bit_xor(shifted, 27), 255)
@@ -59,7 +59,7 @@ function _aes_xtime(a)
     return bit_and(shifted, 255)
 end
 
-function _aes_gf_mul(a, b)
+pub function _aes_gf_mul(a, b)
     let res = 0
     let temp_a = a
     let temp_b = b
@@ -73,7 +73,7 @@ function _aes_gf_mul(a, b)
     return res
 end
 
-function aes_key_expansion(key_bytes)
+pub function aes_key_expansion(key_bytes)
     let sbox = get_aes_sbox()
     let rcon = get_aes_rcon()
     let klen = len(key_bytes)
@@ -143,7 +143,7 @@ function aes_key_expansion(key_bytes)
     return [w, nr]
 end
 
-function aes_encrypt_block(exp_keys, nr, block16)
+pub function aes_encrypt_block(exp_keys, nr, block16)
     let sbox = get_aes_sbox()
     let s = []
     let i = 0
@@ -247,7 +247,7 @@ function aes_encrypt_block(exp_keys, nr, block16)
     return s
 end
 
-function aes_decrypt_block(exp_keys, nr, block16)
+pub function aes_decrypt_block(exp_keys, nr, block16)
     let rsbox = get_aes_rsbox()
     let s = []
     let i = 0
@@ -351,7 +351,7 @@ function aes_decrypt_block(exp_keys, nr, block16)
 end
 
 # PKCS#7 Padding
-function pkcs7_pad(data_bytes, block_size = 16)
+pub function pkcs7_pad(data_bytes, block_size = 16)
     let dlen = len(data_bytes)
     let pad_len = block_size - (dlen % block_size)
     let out_padded = []
@@ -368,7 +368,7 @@ function pkcs7_pad(data_bytes, block_size = 16)
     return out_padded
 end
 
-function pkcs7_unpad(data_bytes)
+pub function pkcs7_unpad(data_bytes)
     let dlen = len(data_bytes)
     if dlen == 0
         return []
@@ -395,7 +395,7 @@ function pkcs7_unpad(data_bytes)
 end
 
 # AES-CBC Mode
-function aes_cbc_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
+pub function aes_cbc_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
     let exp_info = aes_key_expansion(key_bytes)
     let w = exp_info[0]
     let nr = exp_info[1]
@@ -434,7 +434,7 @@ function aes_cbc_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
     return out
 end
 
-function aes_cbc_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
+pub function aes_cbc_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
     let exp_info = aes_key_expansion(key_bytes)
     let w = exp_info[0]
     let nr = exp_info[1]
@@ -472,20 +472,20 @@ function aes_cbc_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
     return pkcs7_unpad(out_padded)
 end
 
-function aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
+pub function aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let c_bytes = aes_cbc_encrypt_bytes(key_bytes, iv_bytes, p_bytes)
     return bytes_to_hex(c_bytes)
 end
 
-function aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+pub function aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let d_bytes = aes_cbc_decrypt_bytes(key_bytes, iv_bytes, c_bytes)
     return bytes_to_str(d_bytes)
 end
 
 # AES-CTR Mode
-function _aes_inc_counter(ctr16)
+pub function _aes_inc_counter(ctr16)
     let i = 15
     while i >= 0
         ctr16[i] = (ctr16[i] + 1) % 256
@@ -496,7 +496,7 @@ function _aes_inc_counter(ctr16)
     end
 end
 
-function aes_ctr_process_bytes(key_bytes, iv_bytes, data_bytes)
+pub function aes_ctr_process_bytes(key_bytes, iv_bytes, data_bytes)
     let exp_info = aes_key_expansion(key_bytes)
     let w = exp_info[0]
     let nr = exp_info[1]
@@ -533,21 +533,21 @@ function aes_ctr_process_bytes(key_bytes, iv_bytes, data_bytes)
     return out
 end
 
-function aes_ctr_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
+pub function aes_ctr_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
     return aes_ctr_process_bytes(key_bytes, iv_bytes, plaintext_bytes)
 end
 
-function aes_ctr_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
+pub function aes_ctr_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
     return aes_ctr_process_bytes(key_bytes, iv_bytes, ciphertext_bytes)
 end
 
-function aes_ctr_encrypt(key_bytes, iv_bytes, plaintext_str)
+pub function aes_ctr_encrypt(key_bytes, iv_bytes, plaintext_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let c_bytes = aes_ctr_process_bytes(key_bytes, iv_bytes, p_bytes)
     return bytes_to_hex(c_bytes)
 end
 
-function aes_ctr_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+pub function aes_ctr_decrypt(key_bytes, iv_bytes, ciphertext_hex)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let d_bytes = aes_ctr_process_bytes(key_bytes, iv_bytes, c_bytes)
     return bytes_to_str(d_bytes)

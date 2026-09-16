@@ -1,7 +1,7 @@
 # Standard Base64 encoding and decoding utilities (RFC 4648)
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-function base64_encode_bytes(bytes)
+pub function base64_encode_bytes(bytes)
     let b64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     let blen = len(bytes)
     let res = ""
@@ -47,7 +47,7 @@ function base64_encode_bytes(bytes)
     return res
 end
 
-function base64_encode(s)
+pub function base64_encode(s)
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -58,7 +58,7 @@ function base64_encode(s)
     return base64_encode_bytes(bytes)
 end
 
-function _b64_val(ch)
+pub function _b64_val(ch)
     let c = ord(ch)
     when c
         is 65..90 then return c - 65
@@ -70,7 +70,7 @@ function _b64_val(ch)
     end
 end
 
-function base64_decode_bytes(s)
+pub function base64_decode_bytes(s)
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -105,7 +105,7 @@ function base64_decode_bytes(s)
     return bytes
 end
 
-function base64_decode(s)
+pub function base64_decode(s)
     let bytes = base64_decode_bytes(s)
     let blen = len(bytes)
     let res = ""
@@ -117,7 +117,7 @@ function base64_decode(s)
     return res
 end
 
-function is_base64(s)
+pub function is_base64(s)
     let slen = len(s)
     if slen == 0 or slen % 4 != 0
         return 0

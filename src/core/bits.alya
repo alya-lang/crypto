@@ -1,30 +1,30 @@
 # Low-level 32-bit and 64-bit bitwise rotation helpers
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-function rotl32(x, n)
+pub function rotl32(x, n)
     return bit_and(bit_or(bit_shl(x, n), bit_shr(x, 32 - n)), 4294967295)
 end
 
-function rotr32(x, n)
+pub function rotr32(x, n)
     return bit_and(bit_or(bit_shr(x, n), bit_shl(x, 32 - n)), 4294967295)
 end
 
-function shr32(x, n)
+pub function shr32(x, n)
     return bit_and(bit_shr(x, n), 4294967295)
 end
 
-function u64(hi, lo)
+pub function u64(hi, lo)
     return bit_or(bit_shl(hi, 32), lo)
 end
 
-function rotl64(x, n)
+pub function rotl64(x, n)
     if n == 0
         return x
     end
     return bit_or(bit_shl(x, n), bit_shr(x, 64 - n))
 end
 
-function rotr64(x, n)
+pub function rotr64(x, n)
     if n == 0
         return x
     end

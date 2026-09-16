@@ -9,7 +9,7 @@ import "../hashes/sha512.alya"
 
 # --- HMAC-SHA256 ---
 
-function hmac_sha256_bytes(key_bytes, msg_bytes)
+pub function hmac_sha256_bytes(key_bytes, msg_bytes)
     let k = []
     let klen = len(key_bytes)
 
@@ -67,20 +67,20 @@ function hmac_sha256_bytes(key_bytes, msg_bytes)
     return sha256_bytes(outer_data)
 end
 
-function hmac_sha256_hex(key_str, msg_str)
+pub function hmac_sha256_hex(key_str, msg_str)
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha256_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-function hmac_sha256(key_str, msg_str)
+pub function hmac_sha256(key_str, msg_str)
     return hmac_sha256_hex(key_str, msg_str)
 end
 
 # --- HMAC-SHA1 ---
 
-function hmac_sha1_bytes(key_bytes, msg_bytes)
+pub function hmac_sha1_bytes(key_bytes, msg_bytes)
     let k = []
     let klen = len(key_bytes)
 
@@ -138,20 +138,20 @@ function hmac_sha1_bytes(key_bytes, msg_bytes)
     return sha1_bytes(outer_data)
 end
 
-function hmac_sha1_hex(key_str, msg_str)
+pub function hmac_sha1_hex(key_str, msg_str)
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha1_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-function hmac_sha1(key_str, msg_str)
+pub function hmac_sha1(key_str, msg_str)
     return hmac_sha1_hex(key_str, msg_str)
 end
 
 # --- HMAC-MD5 ---
 
-function hmac_md5_bytes(key_bytes, msg_bytes)
+pub function hmac_md5_bytes(key_bytes, msg_bytes)
     let k = []
     let klen = len(key_bytes)
 
@@ -209,20 +209,20 @@ function hmac_md5_bytes(key_bytes, msg_bytes)
     return md5_bytes(outer_data)
 end
 
-function hmac_md5_hex(key_str, msg_str)
+pub function hmac_md5_hex(key_str, msg_str)
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_md5_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-function hmac_md5(key_str, msg_str)
+pub function hmac_md5(key_str, msg_str)
     return hmac_md5_hex(key_str, msg_str)
 end
 
 # --- HMAC-SHA512 ---
 
-function hmac_sha512_bytes(key_bytes, msg_bytes)
+pub function hmac_sha512_bytes(key_bytes, msg_bytes)
     let k = []
     let klen = len(key_bytes)
 
@@ -280,20 +280,20 @@ function hmac_sha512_bytes(key_bytes, msg_bytes)
     return sha512_bytes(outer_data)
 end
 
-function hmac_sha512_hex(key_str, msg_str)
+pub function hmac_sha512_hex(key_str, msg_str)
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha512_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-function hmac_sha512(key_str, msg_str)
+pub function hmac_sha512(key_str, msg_str)
     return hmac_sha512_hex(key_str, msg_str)
 end
 
 # --- HMAC-SHA384 ---
 
-function hmac_sha384_bytes(key_bytes, msg_bytes)
+pub function hmac_sha384_bytes(key_bytes, msg_bytes)
     let k = []
     let klen = len(key_bytes)
 
@@ -351,13 +351,13 @@ function hmac_sha384_bytes(key_bytes, msg_bytes)
     return sha384_bytes(outer_data)
 end
 
-function hmac_sha384_hex(key_str, msg_str)
+pub function hmac_sha384_hex(key_str, msg_str)
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha384_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-function hmac_sha384(key_str, msg_str)
+pub function hmac_sha384(key_str, msg_str)
     return hmac_sha384_hex(key_str, msg_str)
 end

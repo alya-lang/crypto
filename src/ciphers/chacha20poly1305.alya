@@ -6,7 +6,7 @@ import "../mac/poly1305.alya"
 import "../core/security.alya"
 import "../encodings/hex.alya"
 
-function _u64_le(val)
+pub function _u64_le(val)
     let b = []
     let v = val
     let i = 0
@@ -18,7 +18,7 @@ function _u64_le(val)
     return b
 end
 
-function chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, plaintext_bytes)
+pub function chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, plaintext_bytes)
     if len(key_bytes) < 32
         throw "ChaCha20 key must be 32 bytes"
     end
@@ -91,7 +91,7 @@ function chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, plai
     return [ciphertext_bytes, tag_bytes]
 end
 
-function chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, ciphertext_bytes, tag_bytes)
+pub function chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, ciphertext_bytes, tag_bytes)
     if len(key_bytes) < 32
         throw "ChaCha20 key must be 32 bytes"
     end
@@ -170,7 +170,7 @@ function chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, ciph
     return chacha20_process_bytes(key_bytes, nonce_bytes, 1, ciphertext_bytes)
 end
 
-function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintext_str)
+pub function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintext_str)
     let aad_bytes = str_to_bytes(aad_str)
     let pt_bytes = str_to_bytes(plaintext_str)
     let res = chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, pt_bytes)
@@ -182,7 +182,7 @@ function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintext_st
     }
 end
 
-function chacha20_poly1305_decrypt(key_bytes, nonce_bytes, aad_str, ciphertext_hex, tag_hex)
+pub function chacha20_poly1305_decrypt(key_bytes, nonce_bytes, aad_str, ciphertext_hex, tag_hex)
     let aad_bytes = str_to_bytes(aad_str)
     let ct_bytes = hex_to_bytes(ciphertext_hex)
     let tag_bytes = hex_to_bytes(tag_hex)

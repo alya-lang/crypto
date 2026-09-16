@@ -3,7 +3,7 @@
 
 import "../encodings/hex.alya"
 
-function rc4_process_bytes(key_bytes, data_bytes)
+pub function rc4_process_bytes(key_bytes, data_bytes)
     let klen = len(key_bytes)
     if klen == 0
         return data_bytes
@@ -48,22 +48,22 @@ function rc4_process_bytes(key_bytes, data_bytes)
     return out
 end
 
-function rc4_encrypt_bytes(key_bytes, plaintext_bytes)
+pub function rc4_encrypt_bytes(key_bytes, plaintext_bytes)
     return rc4_process_bytes(key_bytes, plaintext_bytes)
 end
 
-function rc4_decrypt_bytes(key_bytes, ciphertext_bytes)
+pub function rc4_decrypt_bytes(key_bytes, ciphertext_bytes)
     return rc4_process_bytes(key_bytes, ciphertext_bytes)
 end
 
-function rc4_encrypt(key_str, plaintext_str)
+pub function rc4_encrypt(key_str, plaintext_str)
     let k_bytes = str_to_bytes(key_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let ct = rc4_process_bytes(k_bytes, p_bytes)
     return bytes_to_hex(ct)
 end
 
-function rc4_decrypt(key_str, ciphertext_hex)
+pub function rc4_decrypt(key_str, ciphertext_hex)
     let k_bytes = str_to_bytes(key_str)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let dec_bytes = rc4_process_bytes(k_bytes, c_bytes)

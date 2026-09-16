@@ -4,7 +4,7 @@
 import "../encodings/hex.alya"
 import "../core/bits.alya"
 
-function sha1_bytes(data_bytes)
+pub function sha1_bytes(data_bytes)
     let msg_len = len(data_bytes)
     let total_bits = msg_len * 8
 
@@ -121,12 +121,12 @@ function sha1_bytes(data_bytes)
     return out
 end
 
-function sha1_hex(msg)
+pub function sha1_hex(msg)
     let bytes = str_to_bytes(msg)
     let digest = sha1_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-function sha1(msg)
+pub function sha1(msg)
     return sha1_hex(msg)
 end

@@ -4,7 +4,7 @@
 import "../encodings/hex.alya"
 import "../mac/hmac.alya"
 
-function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
+pub function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
     let slen = len(salt_bytes)
     let derived = []
     let block_index = 1
@@ -53,13 +53,13 @@ function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
     return derived
 end
 
-function pbkdf2_hmac_sha256_hex(password_str, salt_str, iterations, key_len)
+pub function pbkdf2_hmac_sha256_hex(password_str, salt_str, iterations, key_len)
     let pwd_bytes = str_to_bytes(password_str)
     let salt_bytes = str_to_bytes(salt_str)
     let bytes = pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
     return bytes_to_hex(bytes)
 end
 
-function pbkdf2_hmac_sha256(password, salt, iterations, key_len)
+pub function pbkdf2_hmac_sha256(password, salt, iterations, key_len)
     return pbkdf2_hmac_sha256_hex(password, salt, iterations, key_len)
 end

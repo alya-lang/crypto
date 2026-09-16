@@ -1,7 +1,7 @@
 # Base58 encoding and decoding utilities (Bitcoin alphabet)
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-function base58_encode_bytes(bytes)
+pub function base58_encode_bytes(bytes)
     let b58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     let blen = len(bytes)
     if blen == 0
@@ -49,7 +49,7 @@ function base58_encode_bytes(bytes)
     return res
 end
 
-function base58_encode(s)
+pub function base58_encode(s)
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -60,7 +60,7 @@ function base58_encode(s)
     return base58_encode_bytes(bytes)
 end
 
-function _b58_val(ch)
+pub function _b58_val(ch)
     let b58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     let i = 0
     while i < 58
@@ -72,7 +72,7 @@ function _b58_val(ch)
     return 255
 end
 
-function base58_decode_bytes(s)
+pub function base58_decode_bytes(s)
     let slen = len(s)
     if slen == 0
         return []
@@ -121,7 +121,7 @@ function base58_decode_bytes(s)
     return res
 end
 
-function base58_decode(s)
+pub function base58_decode(s)
     let bytes = base58_decode_bytes(s)
     let res = ""
     let blen = len(bytes)
@@ -133,7 +133,7 @@ function base58_decode(s)
     return res
 end
 
-function is_base58(s)
+pub function is_base58(s)
     let slen = len(s)
     if slen == 0
         return 1
@@ -149,10 +149,10 @@ function is_base58(s)
     return 1
 end
 
-function to_base58(s)
+pub function to_base58(s)
     return base58_encode(s)
 end
 
-function from_base58(s)
+pub function from_base58(s)
     return base58_decode(s)
 end

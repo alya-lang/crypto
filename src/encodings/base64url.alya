@@ -1,7 +1,7 @@
 # Base64URL encoding and decoding (RFC 7515 / RFC 4648 §5)
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-function base64url_encode_bytes(bytes)
+pub function base64url_encode_bytes(bytes)
     let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
     let blen = len(bytes)
     let res = ""
@@ -47,7 +47,7 @@ function base64url_encode_bytes(bytes)
     return res
 end
 
-function base64url_encode(s)
+pub function base64url_encode(s)
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -58,7 +58,7 @@ function base64url_encode(s)
     return base64url_encode_bytes(bytes)
 end
 
-function _b64url_val(ch)
+pub function _b64url_val(ch)
     let c = ord(ch)
     when c
         is 65..90 then return c - 65
@@ -70,7 +70,7 @@ function _b64url_val(ch)
     end
 end
 
-function base64url_decode_bytes(s)
+pub function base64url_decode_bytes(s)
     let slen = len(s)
     if slen == 0
         return []
@@ -117,7 +117,7 @@ function base64url_decode_bytes(s)
     return bytes
 end
 
-function base64url_decode(s)
+pub function base64url_decode(s)
     let bytes = base64url_decode_bytes(s)
     let blen = len(bytes)
     let res = ""

@@ -7,7 +7,7 @@ struct CryptoConfig
     key_len
 end
 
-function default_crypto_config()
+pub function default_crypto_config()
     return CryptoConfig {
         encoding: "hex",
         iterations: 10000,

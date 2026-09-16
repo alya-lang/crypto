@@ -4,7 +4,7 @@
 import "../core/bits.alya"
 import "../encodings/hex.alya"
 
-function _sha512_k()
+pub function _sha512_k()
     return [
         u64(1116352408, 3609767458), u64(1899447441, 602891725), u64(3049323471, 3964484399), u64(3921009573, 2173295548),
         u64(961987163, 4081628472), u64(1508970993, 3053834265), u64(2453635748, 2937671579), u64(2870763221, 3664609560),
@@ -29,7 +29,7 @@ function _sha512_k()
     ]
 end
 
-function _get_u64_be(bytes, offset)
+pub function _get_u64_be(bytes, offset)
     let hi = bit_or(bit_shl(bytes[offset], 24), bit_shl(bytes[offset + 1], 16))
     hi = bit_or(hi, bit_shl(bytes[offset + 2], 8))
     hi = bit_or(hi, bytes[offset + 3])
@@ -41,7 +41,7 @@ function _get_u64_be(bytes, offset)
     return u64(hi, lo)
 end
 
-function _append_u64_bytes(val, out)
+pub function _append_u64_bytes(val, out)
     out.push(bit_and(bit_shr(val, 56), 255))
     out.push(bit_and(bit_shr(val, 48), 255))
     out.push(bit_and(bit_shr(val, 40), 255))
@@ -52,7 +52,7 @@ function _append_u64_bytes(val, out)
     out.push(bit_and(val, 255))
 end
 
-function _sha512_transform(data_bytes, is_384)
+pub function _sha512_transform(data_bytes, is_384)
     let msg_len = len(data_bytes)
     let total_bits = msg_len * 8
 
@@ -185,30 +185,30 @@ function _sha512_transform(data_bytes, is_384)
     return out
 end
 
-function sha512_bytes(data_bytes)
+pub function sha512_bytes(data_bytes)
     return _sha512_transform(data_bytes, 0)
 end
 
-function sha512_hex(msg)
+pub function sha512_hex(msg)
     let bytes = str_to_bytes(msg)
     let digest = sha512_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-function sha512(msg)
+pub function sha512(msg)
     return sha512_hex(msg)
 end
 
-function sha384_bytes(data_bytes)
+pub function sha384_bytes(data_bytes)
     return _sha512_transform(data_bytes, 1)
 end
 
-function sha384_hex(msg)
+pub function sha384_hex(msg)
     let bytes = str_to_bytes(msg)
     let digest = sha384_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-function sha384(msg)
+pub function sha384(msg)
     return sha384_hex(msg)
 end

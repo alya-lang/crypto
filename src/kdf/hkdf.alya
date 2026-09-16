@@ -4,7 +4,7 @@
 import "../mac/hmac.alya"
 import "../encodings/hex.alya"
 
-function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo = "sha256")
+pub function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo = "sha256")
     let s = []
     let slen = len(salt_bytes)
     if slen == 0
@@ -35,7 +35,7 @@ function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo = "sha256")
     return hmac_sha256_bytes(s, ikm_bytes)
 end
 
-function hkdf_expand_bytes(prk_bytes, info_bytes, length, hash_algo = "sha256")
+pub function hkdf_expand_bytes(prk_bytes, info_bytes, length, hash_algo = "sha256")
     let hash_len = 32
     if hash_algo == "sha512"
         hash_len = 64
@@ -83,12 +83,12 @@ function hkdf_expand_bytes(prk_bytes, info_bytes, length, hash_algo = "sha256")
     return okm
 end
 
-function hkdf_bytes(salt_bytes, ikm_bytes, info_bytes, length, hash_algo = "sha256")
+pub function hkdf_bytes(salt_bytes, ikm_bytes, info_bytes, length, hash_algo = "sha256")
     let prk = hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo)
     return hkdf_expand_bytes(prk, info_bytes, length, hash_algo)
 end
 
-function hkdf(salt_str, ikm_str, info_str, length, hash_algo = "sha256")
+pub function hkdf(salt_str, ikm_str, info_str, length, hash_algo = "sha256")
     let s_bytes = str_to_bytes(salt_str)
     let k_bytes = str_to_bytes(ikm_str)
     let i_bytes = str_to_bytes(info_str)
@@ -96,7 +96,7 @@ function hkdf(salt_str, ikm_str, info_str, length, hash_algo = "sha256")
     return bytes_to_hex(okm)
 end
 
-function hkdf_hex(salt_hex, ikm_hex, info_hex, length, hash_algo = "sha256")
+pub function hkdf_hex(salt_hex, ikm_hex, info_hex, length, hash_algo = "sha256")
     let s_bytes = hex_to_bytes(salt_hex)
     let k_bytes = hex_to_bytes(ikm_hex)
     let i_bytes = hex_to_bytes(info_hex)

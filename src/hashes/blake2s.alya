@@ -4,14 +4,14 @@
 import "../core/bits.alya"
 import "../encodings/hex.alya"
 
-function _get_blake2s_iv()
+pub function _get_blake2s_iv()
     return [
         1779033703, 3144134277, 1013904242, 2773480762,
         1359893119, 2600822924, 528734635,  1541459225
     ]
 end
 
-function _get_blake2s_sigma(round_idx)
+pub function _get_blake2s_sigma(round_idx)
     let sigmas = [
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
@@ -27,7 +27,7 @@ function _get_blake2s_sigma(round_idx)
     return sigmas[round_idx]
 end
 
-function _blake2s_g(v, a, b, c, d, x, y)
+pub function _blake2s_g(v, a, b, c, d, x, y)
     v[a] = bit_and(v[a] + v[b] + x, 4294967295)
     v[d] = rotr32(bit_xor(v[d], v[a]), 16)
     v[c] = bit_and(v[c] + v[d], 4294967295)
@@ -39,7 +39,7 @@ function _blake2s_g(v, a, b, c, d, x, y)
     v[b] = rotr32(bit_xor(v[b], v[c]), 7)
 end
 
-function _blake2s_compress(h, block_words, t0, t1, is_last)
+pub function _blake2s_compress(h, block_words, t0, t1, is_last)
     let iv = _get_blake2s_iv()
     let v = []
     let i = 0
@@ -81,7 +81,7 @@ function _blake2s_compress(h, block_words, t0, t1, is_last)
     end
 end
 
-function blake2s_bytes(msg_bytes, out_len = 32, key_bytes = [])
+pub function blake2s_bytes(msg_bytes, out_len = 32, key_bytes = [])
     let iv = _get_blake2s_iv()
     let h = []
     let i = 0
@@ -201,13 +201,13 @@ function blake2s_bytes(msg_bytes, out_len = 32, key_bytes = [])
     return out
 end
 
-function blake2s(msg_str)
+pub function blake2s(msg_str)
     let msg_bytes = str_to_bytes(msg_str)
     let res = blake2s_bytes(msg_bytes, 32)
     return bytes_to_hex(res)
 end
 
-function blake2s_keyed(msg_str, key_str)
+pub function blake2s_keyed(msg_str, key_str)
     let msg_bytes = str_to_bytes(msg_str)
     let key_bytes = str_to_bytes(key_str)
     let res = blake2s_bytes(msg_bytes, 32, key_bytes)

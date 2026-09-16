@@ -4,7 +4,7 @@
 import "../core/bits.alya"
 import "../encodings/hex.alya"
 
-function _get_keccak_rc()
+pub function _get_keccak_rc()
     return [
         u64(0, 1), u64(0, 32898), u64(2147483648, 32906), u64(2147483648, 2147516416),
         u64(0, 32907), u64(0, 2147483649), u64(2147483648, 2147516545), u64(2147483648, 32777),
@@ -15,7 +15,7 @@ function _get_keccak_rc()
     ]
 end
 
-function _get_keccak_r()
+pub function _get_keccak_r()
     return [
         0, 36, 3, 41, 18,
         1, 44, 10, 45, 2,
@@ -25,7 +25,7 @@ function _get_keccak_r()
     ]
 end
 
-function _keccak_f1600(a)
+pub function _keccak_f1600(a)
     let rc = _get_keccak_rc()
     let r_table = _get_keccak_r()
 
@@ -101,7 +101,7 @@ function _keccak_f1600(a)
     end
 end
 
-function _sha3_engine(msg_bytes, rate_bytes, suffix, out_len)
+pub function _sha3_engine(msg_bytes, rate_bytes, suffix, out_len)
     let padded = []
     let mlen = len(msg_bytes)
     let i = 0
@@ -172,33 +172,33 @@ function _sha3_engine(msg_bytes, rate_bytes, suffix, out_len)
 end
 
 # SHA3-256 (NIST FIPS 202)
-function sha3_256_bytes(msg_bytes)
+pub function sha3_256_bytes(msg_bytes)
     return _sha3_engine(msg_bytes, 136, 6, 32)
 end
 
-function sha3_256(msg_str)
+pub function sha3_256(msg_str)
     let b = str_to_bytes(msg_str)
     let res = sha3_256_bytes(b)
     return bytes_to_hex(res)
 end
 
 # SHA3-512 (NIST FIPS 202)
-function sha3_512_bytes(msg_bytes)
+pub function sha3_512_bytes(msg_bytes)
     return _sha3_engine(msg_bytes, 72, 6, 64)
 end
 
-function sha3_512(msg_str)
+pub function sha3_512(msg_str)
     let b = str_to_bytes(msg_str)
     let res = sha3_512_bytes(b)
     return bytes_to_hex(res)
 end
 
 # Keccak-256 (Ethereum / Web3 Standard)
-function keccak_256_bytes(msg_bytes)
+pub function keccak_256_bytes(msg_bytes)
     return _sha3_engine(msg_bytes, 136, 1, 32)
 end
 
-function keccak_256(msg_str)
+pub function keccak_256(msg_str)
     let b = str_to_bytes(msg_str)
     let res = keccak_256_bytes(b)
     return bytes_to_hex(res)

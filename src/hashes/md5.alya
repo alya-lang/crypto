@@ -4,7 +4,7 @@
 import "../encodings/hex.alya"
 import "../core/bits.alya"
 
-function _md5_s()
+pub function _md5_s()
     return [
         7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
         5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
@@ -13,7 +13,7 @@ function _md5_s()
     ]
 end
 
-function _md5_k()
+pub function _md5_k()
     return [
         3614090360, 3905402710,  606105819, 3250441966, 4118548399, 1200080426, 2821735955, 4249261313,
         1770035416, 2336552879, 4294925233, 2304563134, 1804603682, 4254626195, 2792965006, 1236535329,
@@ -26,7 +26,7 @@ function _md5_k()
     ]
 end
 
-function md5_bytes(data_bytes)
+pub function md5_bytes(data_bytes)
     let msg_len = len(data_bytes)
     let total_bits = msg_len * 8
 
@@ -139,12 +139,12 @@ function md5_bytes(data_bytes)
     return out
 end
 
-function md5_hex(msg)
+pub function md5_hex(msg)
     let bytes = str_to_bytes(msg)
     let digest = md5_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-function md5(msg)
+pub function md5(msg)
     return md5_hex(msg)
 end

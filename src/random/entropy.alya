@@ -4,11 +4,11 @@
 import "rand" as rand
 import "../encodings/hex.alya"
 
-function random_bytes(count)
+pub function random_bytes(count)
     return rand::bytes(count)
 end
 
-function random_hex(count)
+pub function random_hex(count)
     let b = random_bytes(count)
     return bytes_to_hex(b)
 end

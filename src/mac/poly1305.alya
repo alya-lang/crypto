@@ -5,7 +5,7 @@ import "../core/bits.alya"
 import "../core/security.alya"
 import "../encodings/hex.alya"
 
-function _u8to32(arr, offset)
+pub function _u8to32(arr, offset)
     let b0 = arr[offset]
     let b1 = arr[offset + 1]
     let b2 = arr[offset + 2]
@@ -13,7 +13,7 @@ function _u8to32(arr, offset)
     return bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
 end
 
-function poly1305_mac_bytes(msg_bytes, key_bytes)
+pub function poly1305_mac_bytes(msg_bytes, key_bytes)
     if len(key_bytes) < 32
         throw "Poly1305 key must be at least 32 bytes"
     end
@@ -207,13 +207,13 @@ function poly1305_mac_bytes(msg_bytes, key_bytes)
     return mac
 end
 
-function poly1305_mac(msg_str, key_bytes)
+pub function poly1305_mac(msg_str, key_bytes)
     let m_bytes = str_to_bytes(msg_str)
     let tag = poly1305_mac_bytes(m_bytes, key_bytes)
     return bytes_to_hex(tag)
 end
 
-function poly1305_verify(msg_str, key_bytes, expected_tag_hex)
+pub function poly1305_verify(msg_str, key_bytes, expected_tag_hex)
     let computed_tag_hex = poly1305_mac(msg_str, key_bytes)
     return constant_time_eq(computed_tag_hex, expected_tag_hex)
 end
