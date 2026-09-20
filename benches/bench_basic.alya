@@ -1,9 +1,9 @@
-# Comprehensive Benchmark suite for crypto v0.5.0
+# Comprehensive Benchmark suite for crypto v0.1.0
 import "std/bench"
 import "../src/lib.alya" as crypto
 
 function main()
-    let runner = bench_runner("crypto Micro-Benchmarks v0.5.0")
+    let runner = bench_runner("crypto Micro-Benchmarks v0.1.0")
 
     let msg = "The quick brown fox jumps over the lazy dog"
 
