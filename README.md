@@ -208,7 +208,19 @@ main()
 ## 🧪 Running Tests & Benchmarks
 
 ```bash
-alya run tests/test_basic.alya
+alya test
+```
+
+Check code formatting:
+
+```bash
+alya fmt . --check
+```
+
+Run static code linter:
+
+```bash
+alya lint . --check
 ```
 
 ---
