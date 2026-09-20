@@ -85,7 +85,7 @@ function main()
     # 6. Security & Randomness
     say "--- Security & Randomness ---"
     say "Random Hex (16 bytes) : " + crypto::random_hex(16)
-    say "Random UUID v4        : " + crypto::random_uuid()
+    say "Random Bytes (count 8): " + len(crypto::random_bytes(8))
     say "Constant-time check   : " + crypto::constant_time_eq("token_abc", "token_abc")
     say ""
     say "✓ Demo completed successfully!"
