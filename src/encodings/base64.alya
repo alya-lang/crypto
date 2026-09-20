@@ -1,7 +1,16 @@
-# Standard Base64 encoding and decoding utilities (RFC 4648)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Base64 Encoding & Decoding (RFC 4648)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Standard Base64 text encoding and decoding routines.
 
-pub function base64_encode_bytes(bytes)
+## Encodes a byte array into a Base64 string with padding.
+##
+## ### Parameters
+## - `bytes`: Byte array integers `[0..255]`.
+##
+## ### Returns
+## Encoded Base64 string.
+pub function base64_encode_bytes(bytes) -> str
     let b64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     let blen = len(bytes)
     let res = ""
@@ -47,7 +56,14 @@ pub function base64_encode_bytes(bytes)
     return res
 end
 
-pub function base64_encode(s)
+## Encodes an Alya string into standard Base64 representation.
+##
+## ### Parameters
+## - `s`: Input string.
+##
+## ### Returns
+## Encoded Base64 string.
+pub function base64_encode(s: str) -> str
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -58,7 +74,8 @@ pub function base64_encode(s)
     return base64_encode_bytes(bytes)
 end
 
-pub function _b64_val(ch)
+## Resolves numeric index of a Base64 character.
+pub function _b64_val(ch) -> int
     let c = ord(ch)
     when c
         is 65..90 then return c - 65
@@ -70,7 +87,14 @@ pub function _b64_val(ch)
     end
 end
 
-pub function base64_decode_bytes(s)
+## Decodes a Base64 string into raw byte integers.
+##
+## ### Parameters
+## - `s`: Base64 encoded string.
+##
+## ### Returns
+## Array of byte integers.
+pub function base64_decode_bytes(s: str) -> array
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -105,7 +129,14 @@ pub function base64_decode_bytes(s)
     return bytes
 end
 
-pub function base64_decode(s)
+## Decodes a Base64 string back into an Alya string.
+##
+## ### Parameters
+## - `s`: Base64 encoded string.
+##
+## ### Returns
+## Decoded UTF-8 string.
+pub function base64_decode(s: str) -> str
     let bytes = base64_decode_bytes(s)
     let blen = len(bytes)
     let res = ""
@@ -117,7 +148,14 @@ pub function base64_decode(s)
     return res
 end
 
-pub function is_base64(s)
+## Validates whether a string conforms to Base64 syntax.
+##
+## ### Parameters
+## - `s`: String to validate.
+##
+## ### Returns
+## `1` if valid Base64, `0` otherwise.
+pub function is_base64(s: str) -> int
     let slen = len(s)
     if slen == 0 or slen % 4 != 0
         return 0

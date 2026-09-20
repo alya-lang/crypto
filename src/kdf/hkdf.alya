@@ -1,10 +1,21 @@
-# HMAC-based Extract-and-Expand Key Derivation Function (HKDF - RFC 5869)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## HMAC-based Extract-and-Expand Key Derivation Function (HKDF - RFC 5869)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Standard two-step key derivation function based on HMAC.
 
 import "../mac/hmac.alya"
 import "../encodings/hex.alya"
 
-pub function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo = "sha256")
+## Extracts a pseudorandom key (PRK) from input keying material (IKM) and optional salt.
+##
+## ### Parameters
+## - `salt_bytes`: Optional salt byte array.
+## - `ikm_bytes`: Input keying material byte array.
+## - `hash_algo`: Underlying hash algorithm name (`"sha256"`, `"sha384"`, or `"sha512"`).
+##
+## ### Returns
+## Pseudorandom key (PRK) byte array.
+pub function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo: str = "sha256") -> array
     let s = []
     let slen = len(salt_bytes)
     if slen == 0
@@ -35,7 +46,17 @@ pub function hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo = "sha256")
     return hmac_sha256_bytes(s, ikm_bytes)
 end
 
-pub function hkdf_expand_bytes(prk_bytes, info_bytes, length, hash_algo = "sha256")
+## Expands a pseudorandom key (PRK) to output keying material (OKM) of desired length.
+##
+## ### Parameters
+## - `prk_bytes`: Pseudorandom key byte array.
+## - `info_bytes`: Optional context and application specific info byte array.
+## - `length`: Desired output keying material length in bytes.
+## - `hash_algo`: Underlying hash algorithm name.
+##
+## ### Returns
+## Output keying material (OKM) byte array of length `length`.
+pub function hkdf_expand_bytes(prk_bytes, info_bytes, length: int, hash_algo: str = "sha256") -> array
     let hash_len = 32
     if hash_algo == "sha512"
         hash_len = 64
@@ -83,12 +104,34 @@ pub function hkdf_expand_bytes(prk_bytes, info_bytes, length, hash_algo = "sha25
     return okm
 end
 
-pub function hkdf_bytes(salt_bytes, ikm_bytes, info_bytes, length, hash_algo = "sha256")
+## Full HKDF extract-and-expand pipeline returning raw byte integers.
+##
+## ### Parameters
+## - `salt_bytes`: Salt byte array.
+## - `ikm_bytes`: Input keying material byte array.
+## - `info_bytes`: Context info byte array.
+## - `length`: Output key length in bytes.
+## - `hash_algo`: Underlying hash algorithm name.
+##
+## ### Returns
+## Output keying material (OKM) byte array.
+pub function hkdf_bytes(salt_bytes, ikm_bytes, info_bytes, length: int, hash_algo: str = "sha256") -> array
     let prk = hkdf_extract_bytes(salt_bytes, ikm_bytes, hash_algo)
     return hkdf_expand_bytes(prk, info_bytes, length, hash_algo)
 end
 
-pub function hkdf(salt_str, ikm_str, info_str, length, hash_algo = "sha256")
+## Full HKDF extract-and-expand from string inputs, returning lowercase hex.
+##
+## ### Parameters
+## - `salt_str`: Salt string.
+## - `ikm_str`: Input keying material string.
+## - `info_str`: Context info string.
+## - `length`: Output key length in bytes.
+## - `hash_algo`: Underlying hash algorithm name.
+##
+## ### Returns
+## Lowercase hex representation of derived key material.
+pub function hkdf(salt_str: str, ikm_str: str, info_str: str, length: int, hash_algo: str = "sha256") -> str
     let s_bytes = str_to_bytes(salt_str)
     let k_bytes = str_to_bytes(ikm_str)
     let i_bytes = str_to_bytes(info_str)
@@ -96,7 +139,18 @@ pub function hkdf(salt_str, ikm_str, info_str, length, hash_algo = "sha256")
     return bytes_to_hex(okm)
 end
 
-pub function hkdf_hex(salt_hex, ikm_hex, info_hex, length, hash_algo = "sha256")
+## Full HKDF extract-and-expand from hex inputs, returning lowercase hex.
+##
+## ### Parameters
+## - `salt_hex`: Hexadecimal salt string.
+## - `ikm_hex`: Hexadecimal IKM string.
+## - `info_hex`: Hexadecimal info string.
+## - `length`: Output key length in bytes.
+## - `hash_algo`: Underlying hash algorithm name.
+##
+## ### Returns
+## Lowercase hex representation of derived key material.
+pub function hkdf_hex(salt_hex: str, ikm_hex: str, info_hex: str, length: int, hash_algo: str = "sha256") -> str
     let s_bytes = hex_to_bytes(salt_hex)
     let k_bytes = hex_to_bytes(ikm_hex)
     let i_bytes = hex_to_bytes(info_hex)

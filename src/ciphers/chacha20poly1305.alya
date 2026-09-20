@@ -1,11 +1,20 @@
-# ChaCha20-Poly1305 Authenticated Encryption with Associated Data (RFC 8439)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # ChaCha20-Poly1305 Authenticated Encryption (AEAD)
+##
+## Implements RFC 8439 Authenticated Encryption with Associated Data (AEAD)
+## using ChaCha20 stream cipher and Poly1305 universal hash-based MAC.
 
 import "chacha20.alya"
 import "../mac/poly1305.alya"
 import "../core/security.alya"
 import "../encodings/hex.alya"
 
+## Encodes a 64-bit integer into 8 bytes in little-endian byte order.
+##
+## # Arguments
+## * `val` - Integer value to encode.
+##
+## # Returns
+## Array of 8 bytes.
 pub function _u64_le(val)
     let b = []
     let v = val
@@ -18,6 +27,16 @@ pub function _u64_le(val)
     return b
 end
 
+## Encrypts plaintext and computes an authentication tag using ChaCha20-Poly1305.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `aad_bytes` - Additional authenticated data byte array.
+## * `plaintext_bytes` - Plaintext byte array.
+##
+## # Returns
+## Array containing `[ciphertext_bytes, tag_bytes]`.
 pub function chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, plaintext_bytes)
     if len(key_bytes) < 32
         throw "ChaCha20 key must be 32 bytes"
@@ -91,6 +110,20 @@ pub function chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, 
     return [ciphertext_bytes, tag_bytes]
 end
 
+## Authenticates and decrypts ciphertext bytes using ChaCha20-Poly1305 AEAD.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `aad_bytes` - Additional authenticated data byte array.
+## * `ciphertext_bytes` - Ciphertext byte array.
+## * `tag_bytes` - 16-byte authentication tag array.
+##
+## # Returns
+## Decrypted plaintext byte array.
+##
+## # Errors
+## Throws an error if authentication tag verification fails.
 pub function chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, ciphertext_bytes, tag_bytes)
     if len(key_bytes) < 32
         throw "ChaCha20 key must be 32 bytes"
@@ -170,6 +203,16 @@ pub function chacha20_poly1305_decrypt_bytes(key_bytes, nonce_bytes, aad_bytes, 
     return chacha20_process_bytes(key_bytes, nonce_bytes, 1, ciphertext_bytes)
 end
 
+## Encrypts a plaintext string and computes an authentication tag.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `aad_str` - Additional authenticated data string.
+## * `plaintext_str` - Plaintext string.
+##
+## # Returns
+## Dictionary with `"ciphertext"` and `"tag"` hex strings.
 pub function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintext_str)
     let aad_bytes = str_to_bytes(aad_str)
     let pt_bytes = str_to_bytes(plaintext_str)
@@ -182,6 +225,20 @@ pub function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintex
     }
 end
 
+## Decrypts and authenticates a hex-encoded ciphertext string.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `aad_str` - Additional authenticated data string.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+## * `tag_hex` - Hex-encoded authentication tag string.
+##
+## # Returns
+## Decrypted plaintext string.
+##
+## # Errors
+## Throws an error if authentication tag verification fails.
 pub function chacha20_poly1305_decrypt(key_bytes, nonce_bytes, aad_str, ciphertext_hex, tag_hex)
     let aad_bytes = str_to_bytes(aad_str)
     let ct_bytes = hex_to_bytes(ciphertext_hex)

@@ -1,5 +1,7 @@
-# Keyed-Hashing for Message Authentication (HMAC - RFC 2104)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Keyed-Hashing for Message Authentication (HMAC - RFC 2104)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Cryptographic MAC implementations using SHA-256, SHA-512, SHA-384, SHA-1, and MD5.
 
 import "../encodings/hex.alya"
 import "../hashes/sha256.alya"
@@ -7,9 +9,19 @@ import "../hashes/sha1.alya"
 import "../hashes/md5.alya"
 import "../hashes/sha512.alya"
 
-# --- HMAC-SHA256 ---
+# ═══════════════════════════════════════════════════════════════
+# HMAC-SHA256
+# ═══════════════════════════════════════════════════════════════
 
-pub function hmac_sha256_bytes(key_bytes, msg_bytes)
+## Computes HMAC-SHA256 of byte message using byte key, returning 32 raw bytes.
+##
+## ### Parameters
+## - `key_bytes`: Secret key byte array.
+## - `msg_bytes`: Input message byte array.
+##
+## ### Returns
+## 32-element byte array containing the HMAC digest.
+pub function hmac_sha256_bytes(key_bytes, msg_bytes) -> array
     let k = []
     let klen = len(key_bytes)
 
@@ -67,20 +79,46 @@ pub function hmac_sha256_bytes(key_bytes, msg_bytes)
     return sha256_bytes(outer_data)
 end
 
-pub function hmac_sha256_hex(key_str, msg_str)
+## Computes HMAC-SHA256 of a string message using string key, returning lowercase hex.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function hmac_sha256_hex(key_str: str, msg_str: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha256_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-pub function hmac_sha256(key_str, msg_str)
+## Computes HMAC-SHA256 of a string message. Alias for `hmac_sha256_hex`.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function hmac_sha256(key_str: str, msg_str: str) -> str
     return hmac_sha256_hex(key_str, msg_str)
 end
 
-# --- HMAC-SHA1 ---
+# ═══════════════════════════════════════════════════════════════
+# HMAC-SHA1
+# ═══════════════════════════════════════════════════════════════
 
-pub function hmac_sha1_bytes(key_bytes, msg_bytes)
+## Computes HMAC-SHA1 of byte message using byte key, returning 20 raw bytes.
+##
+## ### Parameters
+## - `key_bytes`: Secret key byte array.
+## - `msg_bytes`: Input message byte array.
+##
+## ### Returns
+## 20-element byte array containing the HMAC digest.
+pub function hmac_sha1_bytes(key_bytes, msg_bytes) -> array
     let k = []
     let klen = len(key_bytes)
 
@@ -138,20 +176,46 @@ pub function hmac_sha1_bytes(key_bytes, msg_bytes)
     return sha1_bytes(outer_data)
 end
 
-pub function hmac_sha1_hex(key_str, msg_str)
+## Computes HMAC-SHA1 of a string message using string key, returning lowercase hex.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 40-character lowercase hex digest string.
+pub function hmac_sha1_hex(key_str: str, msg_str: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha1_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-pub function hmac_sha1(key_str, msg_str)
+## Computes HMAC-SHA1 of a string message. Alias for `hmac_sha1_hex`.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 40-character lowercase hex digest string.
+pub function hmac_sha1(key_str: str, msg_str: str) -> str
     return hmac_sha1_hex(key_str, msg_str)
 end
 
-# --- HMAC-MD5 ---
+# ═══════════════════════════════════════════════════════════════
+# HMAC-MD5
+# ═══════════════════════════════════════════════════════════════
 
-pub function hmac_md5_bytes(key_bytes, msg_bytes)
+## Computes HMAC-MD5 of byte message using byte key, returning 16 raw bytes.
+##
+## ### Parameters
+## - `key_bytes`: Secret key byte array.
+## - `msg_bytes`: Input message byte array.
+##
+## ### Returns
+## 16-element byte array containing the HMAC digest.
+pub function hmac_md5_bytes(key_bytes, msg_bytes) -> array
     let k = []
     let klen = len(key_bytes)
 
@@ -209,20 +273,46 @@ pub function hmac_md5_bytes(key_bytes, msg_bytes)
     return md5_bytes(outer_data)
 end
 
-pub function hmac_md5_hex(key_str, msg_str)
+## Computes HMAC-MD5 of a string message using string key, returning lowercase hex.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 32-character lowercase hex digest string.
+pub function hmac_md5_hex(key_str: str, msg_str: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_md5_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-pub function hmac_md5(key_str, msg_str)
+## Computes HMAC-MD5 of a string message. Alias for `hmac_md5_hex`.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 32-character lowercase hex digest string.
+pub function hmac_md5(key_str: str, msg_str: str) -> str
     return hmac_md5_hex(key_str, msg_str)
 end
 
-# --- HMAC-SHA512 ---
+# ═══════════════════════════════════════════════════════════════
+# HMAC-SHA512
+# ═══════════════════════════════════════════════════════════════
 
-pub function hmac_sha512_bytes(key_bytes, msg_bytes)
+## Computes HMAC-SHA512 of byte message using byte key, returning 64 raw bytes.
+##
+## ### Parameters
+## - `key_bytes`: Secret key byte array.
+## - `msg_bytes`: Input message byte array.
+##
+## ### Returns
+## 64-element byte array containing the HMAC digest.
+pub function hmac_sha512_bytes(key_bytes, msg_bytes) -> array
     let k = []
     let klen = len(key_bytes)
 
@@ -280,20 +370,46 @@ pub function hmac_sha512_bytes(key_bytes, msg_bytes)
     return sha512_bytes(outer_data)
 end
 
-pub function hmac_sha512_hex(key_str, msg_str)
+## Computes HMAC-SHA512 of a string message using string key, returning lowercase hex.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 128-character lowercase hex digest string.
+pub function hmac_sha512_hex(key_str: str, msg_str: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha512_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-pub function hmac_sha512(key_str, msg_str)
+## Computes HMAC-SHA512 of a string message. Alias for `hmac_sha512_hex`.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 128-character lowercase hex digest string.
+pub function hmac_sha512(key_str: str, msg_str: str) -> str
     return hmac_sha512_hex(key_str, msg_str)
 end
 
-# --- HMAC-SHA384 ---
+# ═══════════════════════════════════════════════════════════════
+# HMAC-SHA384
+# ═══════════════════════════════════════════════════════════════
 
-pub function hmac_sha384_bytes(key_bytes, msg_bytes)
+## Computes HMAC-SHA384 of byte message using byte key, returning 48 raw bytes.
+##
+## ### Parameters
+## - `key_bytes`: Secret key byte array.
+## - `msg_bytes`: Input message byte array.
+##
+## ### Returns
+## 48-element byte array containing the HMAC digest.
+pub function hmac_sha384_bytes(key_bytes, msg_bytes) -> array
     let k = []
     let klen = len(key_bytes)
 
@@ -351,13 +467,29 @@ pub function hmac_sha384_bytes(key_bytes, msg_bytes)
     return sha384_bytes(outer_data)
 end
 
-pub function hmac_sha384_hex(key_str, msg_str)
+## Computes HMAC-SHA384 of a string message using string key, returning lowercase hex.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 96-character lowercase hex digest string.
+pub function hmac_sha384_hex(key_str: str, msg_str: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let m_bytes = str_to_bytes(msg_str)
     let digest = hmac_sha384_bytes(k_bytes, m_bytes)
     return bytes_to_hex(digest)
 end
 
-pub function hmac_sha384(key_str, msg_str)
+## Computes HMAC-SHA384 of a string message. Alias for `hmac_sha384_hex`.
+##
+## ### Parameters
+## - `key_str`: Secret key string.
+## - `msg_str`: Input message string.
+##
+## ### Returns
+## 96-character lowercase hex digest string.
+pub function hmac_sha384(key_str: str, msg_str: str) -> str
     return hmac_sha384_hex(key_str, msg_str)
 end

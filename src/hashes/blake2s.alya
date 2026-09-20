@@ -1,5 +1,7 @@
-# BLAKE2s Cryptographic Hash & MAC (RFC 7693)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## BLAKE2s Cryptographic Hash & MAC (RFC 7693)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## High-performance 256-bit cryptographic digest and keyed MAC algorithm.
 
 import "../core/bits.alya"
 import "../encodings/hex.alya"
@@ -81,7 +83,16 @@ pub function _blake2s_compress(h, block_words, t0, t1, is_last)
     end
 end
 
-pub function blake2s_bytes(msg_bytes, out_len = 32, key_bytes = [])
+## Computes BLAKE2s digest or keyed MAC of a byte array.
+##
+## ### Parameters
+## - `msg_bytes`: Input byte array integers `[0..255]`.
+## - `out_len`: Desired digest length in bytes (default 32).
+## - `key_bytes`: Optional key bytes for MAC computation.
+##
+## ### Returns
+## Byte array containing the digest or MAC tag.
+pub function blake2s_bytes(msg_bytes, out_len: int = 32, key_bytes = []) -> array
     let iv = _get_blake2s_iv()
     let h = []
     let i = 0
@@ -201,13 +212,28 @@ pub function blake2s_bytes(msg_bytes, out_len = 32, key_bytes = [])
     return out
 end
 
-pub function blake2s(msg_str)
+## Computes BLAKE2s 256-bit unkeyed hash of an Alya string, returning lowercase hex.
+##
+## ### Parameters
+## - `msg_str`: Input string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function blake2s(msg_str: str) -> str
     let msg_bytes = str_to_bytes(msg_str)
     let res = blake2s_bytes(msg_bytes, 32)
     return bytes_to_hex(res)
 end
 
-pub function blake2s_keyed(msg_str, key_str)
+## Computes BLAKE2s 256-bit keyed MAC of an Alya string, returning lowercase hex.
+##
+## ### Parameters
+## - `msg_str`: Input string.
+## - `key_str`: Key string.
+##
+## ### Returns
+## 64-character lowercase hex MAC tag string.
+pub function blake2s_keyed(msg_str: str, key_str: str) -> str
     let msg_bytes = str_to_bytes(msg_str)
     let key_bytes = str_to_bytes(key_str)
     let res = blake2s_bytes(msg_bytes, 32, key_bytes)

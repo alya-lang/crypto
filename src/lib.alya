@@ -1,5 +1,8 @@
-# Alya Cryptography and Hashing Library
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # Alya Cryptography and Hashing Library
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## High-performance, pure Alya cryptographic library providing standard hash functions,
+## ciphers, MAC algorithms, key derivation routines, and secure encodings.
 
 import "./types.alya"
 import "./core/bits.alya"
@@ -25,3 +28,337 @@ import "./ciphers/chacha20.alya"
 import "./ciphers/chacha20poly1305.alya"
 import "./ciphers/aes.alya"
 import "./random/entropy.alya"
+
+## Computes a cryptographic hash of a text string using the specified algorithm.
+##
+## # Arguments
+## * `data` - Input string to hash.
+## * `algorithm` - `HashAlgorithm` enum value (default: `HashAlgorithm.Sha256`).
+##
+## # Returns
+## Hex-encoded hash digest string.
+pub function hash(data: str, algorithm: HashAlgorithm) -> str
+    when algorithm
+        is HashAlgorithm.Sha256 then
+            return sha256(data)
+        is HashAlgorithm.Sha512 then
+            return sha512(data)
+        is HashAlgorithm.Sha384 then
+            return sha384(data)
+        is HashAlgorithm.Sha224 then
+            return sha224(data)
+        is HashAlgorithm.Sha1 then
+            return sha1(data)
+        is HashAlgorithm.Md5 then
+            return md5(data)
+        is HashAlgorithm.Blake2s then
+            return blake2s(data)
+        is HashAlgorithm.Sha3_256 then
+            return sha3_256(data)
+        is HashAlgorithm.Sha3_512 then
+            return sha3_512(data)
+        else
+            return sha256(data)
+    end
+end
+
+## Encodes raw bytes into a string using the specified format.
+##
+## # Arguments
+## * `data_bytes` - Byte array to encode.
+## * `format` - `EncodingFormat` enum value.
+##
+## # Returns
+## Encoded string representation.
+pub function encode(data_bytes, format: EncodingFormat) -> str
+    when format
+        is EncodingFormat.Hex then
+            return bytes_to_hex(data_bytes)
+        is EncodingFormat.Base64 then
+            return base64_encode_bytes(data_bytes)
+        is EncodingFormat.Base64Url then
+            return base64url_encode_bytes(data_bytes)
+        is EncodingFormat.Base32 then
+            return base32_encode_bytes(data_bytes)
+        is EncodingFormat.Base58 then
+            return base58_encode_bytes(data_bytes)
+        else
+            return bytes_to_hex(data_bytes)
+    end
+end
+
+## Decodes an encoded text string into raw bytes.
+##
+## # Arguments
+## * `text` - Encoded string to decode.
+## * `format` - `EncodingFormat` enum value.
+##
+## # Returns
+## Decoded byte array.
+pub function decode(text: str, format: EncodingFormat)
+    when format
+        is EncodingFormat.Hex then
+            return hex_to_bytes(text)
+        is EncodingFormat.Base64 then
+            return base64_decode_bytes(text)
+        is EncodingFormat.Base64Url then
+            return base64url_decode_bytes(text)
+        is EncodingFormat.Base32 then
+            return base32_decode_bytes(text)
+        is EncodingFormat.Base58 then
+            return base58_decode_bytes(text)
+        else
+            return hex_to_bytes(text)
+    end
+end
+
+## Computes a Message Authentication Code (MAC) for a string message.
+##
+## # Arguments
+## * `key_str` - Secret key string.
+## * `msg_str` - Input message string.
+## * `algorithm` - `MacAlgorithm` enum value (default: `MacAlgorithm.HmacSha256`).
+##
+## # Returns
+## Hex-encoded MAC tag string.
+pub function mac(key_str: str, msg_str: str, algorithm: MacAlgorithm = MacAlgorithm.HmacSha256) -> str
+    when algorithm
+        is MacAlgorithm.HmacSha256 then
+            return hmac_sha256(key_str, msg_str)
+        is MacAlgorithm.HmacSha512 then
+            return hmac_sha512(key_str, msg_str)
+        is MacAlgorithm.HmacSha384 then
+            return hmac_sha384(key_str, msg_str)
+        is MacAlgorithm.HmacSha1 then
+            return hmac_sha1(key_str, msg_str)
+        is MacAlgorithm.HmacMd5 then
+            return hmac_md5(key_str, msg_str)
+        is MacAlgorithm.Poly1305 then
+            return poly1305_mac(msg_str, str_to_bytes(key_str))
+        else
+            return hmac_sha256(key_str, msg_str)
+    end
+end
+
+## Derives a cryptographic key from a password using PBKDF2 with HMAC-SHA256.
+##
+## # Arguments
+## * `password` - Secret password string.
+## * `salt` - Salt string.
+## * `iterations` - Number of hash iterations (default: 10000).
+## * `key_len` - Desired key length in bytes (default: 32).
+##
+## # Returns
+## Hex-encoded derived key string.
+pub function derive_key(password: str, salt: str, iterations: int = 10000, key_len: int = 32) -> str
+    return pbkdf2_hmac_sha256(password, salt, iterations, key_len)
+end
+
+## Derives keying material using HMAC-based Extract-and-Expand Key Derivation Function (HKDF).
+##
+## # Arguments
+## * `salt_str` - Salt string.
+## * `ikm_str` - Input keying material string.
+## * `info_str` - Context and application specific information string.
+## * `length` - Length of output keying material in bytes (default: 32).
+##
+## # Returns
+## Hex-encoded derived keying material string.
+pub function kdf_hkdf(salt_str: str, ikm_str: str, info_str: str, length: int = 32) -> str
+    return hkdf(salt_str, ikm_str, info_str, length)
+end
+
+## Hashes a password using PBKDF2-HMAC-SHA256 with a random salt.
+##
+## # Arguments
+## * `password` - Plaintext password string.
+## * `iterations` - Number of iterations (default: 10000).
+##
+## # Returns
+## Encoded password hash record (`pbkdf2_sha256$iterations$salt$hash`).
+pub function hash_password(password: str, iterations: int = 10000) -> str
+    return password_hash(password, iterations)
+end
+
+## Verifies a password against a stored hash record in constant time.
+##
+## # Arguments
+## * `password` - Plaintext password to verify.
+## * `hash_record` - Stored password record.
+##
+## # Returns
+## `true` if valid, `false` otherwise.
+pub function verify_password(password: str, hash_record: str) -> bool
+    return password_verify(password, hash_record)
+end
+
+## Performs constant-time string comparison to prevent timing attacks.
+##
+## # Arguments
+## * `a` - First string.
+## * `b` - Second string.
+##
+## # Returns
+## `true` if strings are equal, `false` otherwise.
+pub function secure_compare(a: str, b: str) -> bool
+    return constant_time_eq(a, b)
+end
+
+## Generates cryptographically secure random bytes.
+##
+## # Arguments
+## * `count` - Number of bytes to generate.
+##
+## # Returns
+## Array of random byte integers.
+pub function secure_random_bytes(count: int) -> array
+    return random_bytes(count)
+end
+
+## Generates a cryptographically secure random hexadecimal string.
+##
+## # Arguments
+## * `byte_count` - Number of random bytes.
+##
+## # Returns
+## Hexadecimal string of length `2 * byte_count`.
+pub function secure_random_hex(byte_count: int) -> str
+    return random_hex(byte_count)
+end
+
+## Rotates a 32-bit unsigned integer left by `n` bits.
+##
+## # Arguments
+## * `x` - 32-bit integer value.
+## * `n` - Bit shift amount.
+##
+## # Returns
+## Rotated 32-bit integer.
+pub function rotate_left_32(x: int, n: int) -> int
+    return rotl32(x, n)
+end
+
+## Encrypts plaintext using a stream cipher algorithm.
+##
+## # Arguments
+## * `key_bytes` - Secret key byte array (key bytes for RC4, 32-byte array for ChaCha20).
+## * `nonce_bytes` - 12-byte nonce array for ChaCha20 (ignored for RC4).
+## * `plaintext_str` - Plaintext string to encrypt.
+## * `algorithm` - `CipherAlgorithm` enum value.
+##
+## # Returns
+## Hex-encoded ciphertext string.
+pub function encrypt_stream(key_bytes, nonce_bytes, plaintext_str: str, algorithm: CipherAlgorithm) -> str
+    when algorithm
+        is CipherAlgorithm.Rc4 then
+            let p_bytes = str_to_bytes(plaintext_str)
+            let ct = rc4_process_bytes(key_bytes, p_bytes)
+            return bytes_to_hex(ct)
+        is CipherAlgorithm.ChaCha20 then
+            return chacha20_encrypt(key_bytes, nonce_bytes, 1, plaintext_str)
+        else
+            return chacha20_encrypt(key_bytes, nonce_bytes, 1, plaintext_str)
+    end
+end
+
+## Decrypts ciphertext using a stream cipher algorithm.
+##
+## # Arguments
+## * `key_bytes` - Secret key byte array (key bytes for RC4, 32-byte array for ChaCha20).
+## * `nonce_bytes` - 12-byte nonce array for ChaCha20 (ignored for RC4).
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+## * `algorithm` - `CipherAlgorithm` enum value.
+##
+## # Returns
+## Decrypted plaintext string.
+pub function decrypt_stream(key_bytes, nonce_bytes, ciphertext_hex: str, algorithm: CipherAlgorithm) -> str
+    when algorithm
+        is CipherAlgorithm.Rc4 then
+            let c_bytes = hex_to_bytes(ciphertext_hex)
+            let dec = rc4_process_bytes(key_bytes, c_bytes)
+            return bytes_to_str(dec)
+        is CipherAlgorithm.ChaCha20 then
+            return chacha20_decrypt(key_bytes, nonce_bytes, 1, ciphertext_hex)
+        else
+            return chacha20_decrypt(key_bytes, nonce_bytes, 1, ciphertext_hex)
+    end
+end
+
+## Encrypts plaintext and generates an authentication tag using ChaCha20-Poly1305 AEAD.
+##
+## # Arguments
+## * `key_bytes` - 32-byte key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `aad_str` - Associated data string.
+## * `plaintext_str` - Plaintext string.
+##
+## # Returns
+## Dictionary containing `"ciphertext"` and `"tag"` hex strings.
+pub function encrypt_aead(key_bytes, nonce_bytes, aad_str: str, plaintext_str: str)
+    return chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str, plaintext_str)
+end
+
+## Decrypts ciphertext and verifies the tag using ChaCha20-Poly1305 AEAD.
+##
+## # Arguments
+## * `key_bytes` - 32-byte key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `aad_str` - Associated data string.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+## * `tag_hex` - Hex-encoded authentication tag string.
+##
+## # Returns
+## Decrypted plaintext string.
+pub function decrypt_aead(key_bytes, nonce_bytes, aad_str: str, ciphertext_hex: str, tag_hex: str) -> str
+    return chacha20_poly1305_decrypt(key_bytes, nonce_bytes, aad_str, ciphertext_hex, tag_hex)
+end
+
+## Encrypts plaintext in AES block cipher mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initialization vector array.
+## * `plaintext_str` - Plaintext string to encrypt.
+## * `mode` - `CipherMode` enum value.
+##
+## # Returns
+## Hex-encoded ciphertext string.
+pub function encrypt_aes(key_bytes, iv_bytes, plaintext_str: str, mode: CipherMode) -> str
+    when mode
+        is CipherMode.Cbc then
+            return aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
+        is CipherMode.Ctr then
+            return aes_ctr_encrypt(key_bytes, iv_bytes, plaintext_str)
+        else
+            return aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
+    end
+end
+
+## Decrypts ciphertext in AES block cipher mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initialization vector array.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+## * `mode` - `CipherMode` enum value.
+##
+## # Returns
+## Decrypted plaintext string.
+pub function decrypt_aes(key_bytes, iv_bytes, ciphertext_hex: str, mode: CipherMode) -> str
+    when mode
+        is CipherMode.Cbc then
+            return aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+        is CipherMode.Ctr then
+            return aes_ctr_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+        else
+            return aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+    end
+end
+
+## Creates a default `CryptoConfig` configuration instance.
+##
+## # Returns
+## New `CryptoConfig` instance.
+pub function new_crypto_config() -> CryptoConfig
+    return default_crypto_config()
+end

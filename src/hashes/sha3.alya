@@ -1,5 +1,7 @@
-# SHA-3 (FIPS 202) and Keccak Hash Family
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## SHA-3 (FIPS 202) and Keccak Hash Family
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Sponge-construction Keccak-p[1600, 24] permutation hash algorithms.
 
 import "../core/bits.alya"
 import "../encodings/hex.alya"
@@ -171,34 +173,73 @@ pub function _sha3_engine(msg_bytes, rate_bytes, suffix, out_len)
     return out
 end
 
-# SHA3-256 (NIST FIPS 202)
-pub function sha3_256_bytes(msg_bytes)
+## Computes SHA3-256 hash of a byte array, returning 32 raw bytes.
+##
+## ### Parameters
+## - `msg_bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 32-element byte array containing the digest.
+pub function sha3_256_bytes(msg_bytes) -> array
     return _sha3_engine(msg_bytes, 136, 6, 32)
 end
 
-pub function sha3_256(msg_str)
+## Computes SHA3-256 hash of an Alya string, returning lowercase hex.
+##
+## ### Parameters
+## - `msg_str`: Input string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function sha3_256(msg_str: str) -> str
     let b = str_to_bytes(msg_str)
     let res = sha3_256_bytes(b)
     return bytes_to_hex(res)
 end
 
-# SHA3-512 (NIST FIPS 202)
-pub function sha3_512_bytes(msg_bytes)
+## Computes SHA3-512 hash of a byte array, returning 64 raw bytes.
+##
+## ### Parameters
+## - `msg_bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 64-element byte array containing the digest.
+pub function sha3_512_bytes(msg_bytes) -> array
     return _sha3_engine(msg_bytes, 72, 6, 64)
 end
 
-pub function sha3_512(msg_str)
+## Computes SHA3-512 hash of an Alya string, returning lowercase hex.
+##
+## ### Parameters
+## - `msg_str`: Input string.
+##
+## ### Returns
+## 128-character lowercase hex digest string.
+pub function sha3_512(msg_str: str) -> str
     let b = str_to_bytes(msg_str)
     let res = sha3_512_bytes(b)
     return bytes_to_hex(res)
 end
 
-# Keccak-256 (Ethereum / Web3 Standard)
-pub function keccak_256_bytes(msg_bytes)
+## Computes Keccak-256 (Ethereum / Web3 standard) hash of a byte array.
+##
+## ### Parameters
+## - `msg_bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 32-element byte array containing the digest.
+pub function keccak_256_bytes(msg_bytes) -> array
     return _sha3_engine(msg_bytes, 136, 1, 32)
 end
 
-pub function keccak_256(msg_str)
+## Computes Keccak-256 (Ethereum / Web3 standard) hash of an Alya string.
+##
+## ### Parameters
+## - `msg_str`: Input string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function keccak_256(msg_str: str) -> str
     let b = str_to_bytes(msg_str)
     let res = keccak_256_bytes(b)
     return bytes_to_hex(res)

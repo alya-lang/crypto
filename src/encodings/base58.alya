@@ -1,7 +1,16 @@
-# Base58 encoding and decoding utilities (Bitcoin alphabet)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Base58 Encoding & Decoding (Bitcoin Alphabet)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Base58 binary-to-text encoding avoiding visually ambiguous characters.
 
-pub function base58_encode_bytes(bytes)
+## Encodes a byte array into a Base58 string.
+##
+## ### Parameters
+## - `bytes`: Byte array integers `[0..255]`.
+##
+## ### Returns
+## Encoded Base58 string.
+pub function base58_encode_bytes(bytes) -> str
     let b58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     let blen = len(bytes)
     if blen == 0
@@ -49,7 +58,14 @@ pub function base58_encode_bytes(bytes)
     return res
 end
 
-pub function base58_encode(s)
+## Encodes an Alya string into Base58 representation.
+##
+## ### Parameters
+## - `s`: Input string.
+##
+## ### Returns
+## Encoded Base58 string.
+pub function base58_encode(s: str) -> str
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -60,7 +76,8 @@ pub function base58_encode(s)
     return base58_encode_bytes(bytes)
 end
 
-pub function _b58_val(ch)
+## Resolves numeric index of a Base58 character.
+pub function _b58_val(ch) -> int
     let b58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     let i = 0
     while i < 58
@@ -72,7 +89,14 @@ pub function _b58_val(ch)
     return 255
 end
 
-pub function base58_decode_bytes(s)
+## Decodes a Base58 string into raw byte integers.
+##
+## ### Parameters
+## - `s`: Base58 encoded string.
+##
+## ### Returns
+## Array of byte integers.
+pub function base58_decode_bytes(s: str) -> array
     let slen = len(s)
     if slen == 0
         return []
@@ -121,7 +145,14 @@ pub function base58_decode_bytes(s)
     return res
 end
 
-pub function base58_decode(s)
+## Decodes a Base58 string back into an Alya string.
+##
+## ### Parameters
+## - `s`: Base58 encoded string.
+##
+## ### Returns
+## Decoded UTF-8 string.
+pub function base58_decode(s: str) -> str
     let bytes = base58_decode_bytes(s)
     let res = ""
     let blen = len(bytes)
@@ -133,7 +164,14 @@ pub function base58_decode(s)
     return res
 end
 
-pub function is_base58(s)
+## Validates whether a string conforms to Base58 syntax.
+##
+## ### Parameters
+## - `s`: String to validate.
+##
+## ### Returns
+## `1` if valid Base58, `0` otherwise.
+pub function is_base58(s: str) -> int
     let slen = len(s)
     if slen == 0
         return 1
@@ -149,10 +187,12 @@ pub function is_base58(s)
     return 1
 end
 
-pub function to_base58(s)
+## Alias for `base58_encode`.
+pub function to_base58(s: str) -> str
     return base58_encode(s)
 end
 
-pub function from_base58(s)
+## Alias for `base58_decode`.
+pub function from_base58(s: str) -> str
     return base58_decode(s)
 end

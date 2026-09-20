@@ -1,7 +1,16 @@
-# Hexadecimal encoding and decoding utilities
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Hexadecimal (Base-16) Encoding & Decoding
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Low-level byte and string hexadecimal conversion utilities.
 
-pub function str_to_bytes(s)
+## Converts an Alya string into a list of byte integers `[0..255]`.
+##
+## ### Parameters
+## - `s`: Input string.
+##
+## ### Returns
+## Array of byte integers.
+pub function str_to_bytes(s: str) -> array
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -12,7 +21,14 @@ pub function str_to_bytes(s)
     return bytes
 end
 
-pub function bytes_to_str(bytes)
+## Converts a list of byte integers `[0..255]` into an Alya string.
+##
+## ### Parameters
+## - `bytes`: Array of byte integers.
+##
+## ### Returns
+## Decoded string.
+pub function bytes_to_str(bytes) -> str
     let blen = len(bytes)
     let res = ""
     let i = 0
@@ -23,7 +39,14 @@ pub function bytes_to_str(bytes)
     return res
 end
 
-pub function bytes_to_hex(bytes)
+## Converts a list of byte integers into a lowercase hexadecimal string.
+##
+## ### Parameters
+## - `bytes`: Array of byte integers.
+##
+## ### Returns
+## Lowercase hexadecimal string.
+pub function bytes_to_hex(bytes) -> str
     let hex_chars = "0123456789abcdef"
     let blen = len(bytes)
     let res = ""
@@ -38,7 +61,8 @@ pub function bytes_to_hex(bytes)
     return res
 end
 
-pub function _hex_val(ch)
+## Resolves numeric value of a single hexadecimal character `[0..15]`.
+pub function _hex_val(ch) -> int
     let c = ord(ch)
     when c
         is 48..57 then return c - 48
@@ -48,7 +72,14 @@ pub function _hex_val(ch)
     end
 end
 
-pub function hex_to_bytes(s)
+## Parses a hexadecimal string into an array of byte integers.
+##
+## ### Parameters
+## - `s`: Hexadecimal string.
+##
+## ### Returns
+## Array of byte integers.
+pub function hex_to_bytes(s: str) -> array
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -62,17 +93,38 @@ pub function hex_to_bytes(s)
     return bytes
 end
 
-pub function hex_encode(s)
+## Encodes an Alya string into a lowercase hexadecimal string.
+##
+## ### Parameters
+## - `s`: Input string.
+##
+## ### Returns
+## Hexadecimal encoded string.
+pub function hex_encode(s: str) -> str
     let bytes = str_to_bytes(s)
     return bytes_to_hex(bytes)
 end
 
-pub function hex_decode(s)
+## Decodes a hexadecimal string back into an Alya string.
+##
+## ### Parameters
+## - `s`: Hexadecimal encoded string.
+##
+## ### Returns
+## Decoded UTF-8 string.
+pub function hex_decode(s: str) -> str
     let bytes = hex_to_bytes(s)
     return bytes_to_str(bytes)
 end
 
-pub function is_hex(s)
+## Validates whether a string is a valid even-length hexadecimal string.
+##
+## ### Parameters
+## - `s`: String to validate.
+##
+## ### Returns
+## `1` if valid hex, `0` otherwise.
+pub function is_hex(s: str) -> int
     let slen = len(s)
     if slen == 0 or slen % 2 != 0
         return 0

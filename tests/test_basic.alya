@@ -2,10 +2,7 @@
 import "std/test"
 import "../src/lib.alya" as crypto
 
-function main()
-    test_suite("crypto Package Comprehensive Test Suite")
-    let r = runner_new()
-
+function test_encodings(r)
     # --- 1. Hex Encodings ---
     let h_enc = crypto::hex_encode("hello")
     runner_assert_str_eq(r, h_enc, "68656c6c6f", "hex_encode('hello') -> 68656c6c6f")
@@ -45,7 +42,9 @@ function main()
     runner_assert_str_eq(r, crypto::base58_decode("JxF12TrwUP45BMd"), "Hello World", "base58 decode 'Hello World'")
     runner_assert_eq(r, crypto::is_base58("JxF12TrwUP45BMd"), 1, "is_base58 valid")
     runner_assert_eq(r, crypto::is_base58("0OIl"), 0, "is_base58 invalid 0/O/I/l")
+end
 
+function test_hashes(r)
     # --- 6. SHA-256 Hashes ---
     let s256_empty = crypto::sha256("")
     runner_assert_str_eq(r, s256_empty, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sha256 empty string")
@@ -80,7 +79,9 @@ function main()
     runner_assert_str_eq(r, md5_empty, "d41d8cd98f00b204e9800998ecf8427e", "md5 empty string")
     let md5_fox = crypto::md5("The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, md5_fox, "9e107d9d372bb6826bd81d3542a419d6", "md5 standard fox vector")
+end
 
+function test_hmac_and_kdf(r)
     # --- 11. HMAC Message Authentication ---
     let hmac_256 = crypto::hmac_sha256("key", "The quick brown fox jumps over the lazy dog")
     runner_assert_str_eq(r, hmac_256, "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8", "hmac_sha256 standard vector")
@@ -108,7 +109,9 @@ function main()
     let okm_hex = crypto::hkdf_hex(salt_hex, ikm_hex, info_hex, 42)
     let expected_hkdf = "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
     runner_assert_str_eq(r, okm_hex, expected_hkdf, "hkdf RFC 5869 Test Case 1")
+end
 
+function test_ciphers(r)
     # --- 14. Ciphers: RC4 Stream Cipher ---
     let rc4_key = "Key"
     let rc4_pt = "Plaintext"
@@ -153,7 +156,9 @@ function main()
     let ctr_enc = crypto::aes_ctr_encrypt(aes128_k, aes_iv, cbc_msg)
     let ctr_dec = crypto::aes_ctr_decrypt(aes128_k, aes_iv, ctr_enc)
     runner_assert_str_eq(r, ctr_dec, cbc_msg, "aes-128-ctr roundtrip")
+end
 
+function test_poly1305_and_aead(r)
     # --- 17. Random & Entropy ---
     let rnd_bytes = crypto::random_bytes(16)
     runner_assert_eq(r, len(rnd_bytes), 16, "random_bytes count")
@@ -179,7 +184,9 @@ function main()
     let aead_dec_bytes = crypto::chacha20_poly1305_decrypt_bytes(aead_key, aead_nonce, aead_aad_bytes, aead_res[0], aead_res[1])
     let aead_dec = crypto::bytes_to_str(aead_dec_bytes)
     runner_assert_str_eq(r, aead_dec, aead_pt, "chacha20-poly1305 AEAD decrypt recovers plaintext")
+end
 
+function test_modern_hashes(r)
     # --- 20. Modern Hashes: BLAKE2s (RFC 7693) ---
     runner_assert_str_eq(r, crypto::blake2s(""), "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9", "blake2s empty string vector")
     runner_assert_str_eq(r, crypto::blake2s("abc"), "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982", "blake2s 'abc' vector")
@@ -197,6 +204,100 @@ function main()
     let pwd_hash = crypto::password_hash(my_pwd, 1000)
     runner_assert_eq(r, crypto::password_verify(my_pwd, pwd_hash), 1, "password_verify correct password")
     runner_assert_eq(r, crypto::password_verify("WrongPassword!", pwd_hash), 0, "password_verify wrong password")
+end
+
+function test_facades(r)
+    # --- 23. Modern Enums, Config Struct, and Root Facades ---
+    runner_assert_eq(r, crypto::HashAlgorithm.Sha256, 1, "HashAlgorithm.Sha256 enum value")
+    runner_assert_eq(r, crypto::HashAlgorithm.Sha512, 2, "HashAlgorithm.Sha512 enum value")
+    runner_assert_eq(r, crypto::HashAlgorithm.Blake2s, 9, "HashAlgorithm.Blake2s enum value")
+    runner_assert_eq(r, crypto::EncodingFormat.Hex, 1, "EncodingFormat.Hex enum value")
+    runner_assert_eq(r, crypto::EncodingFormat.Base64, 2, "EncodingFormat.Base64 enum value")
+    runner_assert_eq(r, crypto::EncodingFormat.Base58, 5, "EncodingFormat.Base58 enum value")
+    runner_assert_eq(r, crypto::CipherAlgorithm.Aes256, 3, "CipherAlgorithm.Aes256 enum value")
+    runner_assert_eq(r, crypto::CipherAlgorithm.ChaCha20, 4, "CipherAlgorithm.ChaCha20 enum value")
+    runner_assert_eq(r, crypto::CipherAlgorithm.Rc4, 6, "CipherAlgorithm.Rc4 enum value")
+    runner_assert_eq(r, crypto::CipherMode.Cbc, 1, "CipherMode.Cbc enum value")
+    runner_assert_eq(r, crypto::CipherMode.Ctr, 2, "CipherMode.Ctr enum value")
+    runner_assert_eq(r, crypto::MacAlgorithm.HmacSha256, 1, "MacAlgorithm.HmacSha256 enum value")
+    runner_assert_eq(r, crypto::MacAlgorithm.Poly1305, 7, "MacAlgorithm.Poly1305 enum value")
+
+    let cfg = crypto::new_crypto_config()
+    runner_assert_eq(r, cfg.encoding, crypto::EncodingFormat.Hex, "CryptoConfig default encoding")
+    runner_assert_eq(r, cfg.iterations, 10000, "CryptoConfig default iterations")
+    runner_assert_eq(r, cfg.key_len, 32, "CryptoConfig default key_len")
+
+    # Unified Facade: hash
+    let h_sha256 = crypto::hash("hello", crypto::HashAlgorithm.Sha256)
+    runner_assert_str_eq(r, h_sha256, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "crypto::hash Sha256")
+    let h_md5 = crypto::hash("hello", crypto::HashAlgorithm.Md5)
+    runner_assert_str_eq(r, h_md5, "5d41402abc4b2a76b9719d911017c592", "crypto::hash Md5")
+
+    # Unified Facade: encode and decode
+    let raw_bytes = [104, 101, 108, 108, 111]
+    let enc_hex = crypto::encode(raw_bytes, crypto::EncodingFormat.Hex)
+    runner_assert_str_eq(r, enc_hex, "68656c6c6f", "crypto::encode Hex")
+    let enc_b64 = crypto::encode(raw_bytes, crypto::EncodingFormat.Base64)
+    runner_assert_str_eq(r, enc_b64, "aGVsbG8=", "crypto::encode Base64")
+    let dec_bytes = crypto::decode("68656c6c6f", crypto::EncodingFormat.Hex)
+    runner_assert_eq(r, len(dec_bytes), 5, "crypto::decode length")
+    runner_assert_true(r, dec_bytes[0] == 104, "crypto::decode byte 0")
+
+    # Unified Facade: mac
+    let mac_val = crypto::mac("key", "hello", crypto::MacAlgorithm.HmacSha256)
+    runner_assert_eq(r, len(mac_val), 64, "crypto::mac HmacSha256 length")
+
+    # Unified Facade: security & math
+    runner_assert_eq(r, crypto::secure_compare("abc", "abc"), 1, "crypto::secure_compare true")
+    runner_assert_eq(r, crypto::secure_compare("abc", "xyz"), 0, "crypto::secure_compare false")
+    runner_assert_eq(r, crypto::rotate_left_32(1, 4), 16, "crypto::rotate_left_32")
+
+    # Unified Facade: random
+    runner_assert_eq(r, len(crypto::secure_random_bytes(8)), 8, "crypto::secure_random_bytes")
+    runner_assert_eq(r, len(crypto::secure_random_hex(8)), 16, "crypto::secure_random_hex")
+
+    # Unified Facade: password
+    let u_pwd_hash = crypto::hash_password("AlyaSecret2026", 500)
+    runner_assert_eq(r, crypto::verify_password("AlyaSecret2026", u_pwd_hash), 1, "crypto::verify_password true")
+    runner_assert_eq(r, crypto::verify_password("WrongPassword", u_pwd_hash), 0, "crypto::verify_password false")
+
+    # Unified Facade: stream cipher
+    let s_key_bytes = crypto::str_to_bytes("Key")
+    let s_ct = crypto::encrypt_stream(s_key_bytes, [], "Plaintext", crypto::CipherAlgorithm.Rc4)
+    let s_rec = crypto::decrypt_stream(s_key_bytes, [], s_ct, crypto::CipherAlgorithm.Rc4)
+    runner_assert_str_eq(r, s_rec, "Plaintext", "crypto::encrypt_stream / decrypt_stream Rc4")
+
+    # Unified Facade: AES block cipher
+    let aes128_k = crypto::hex_to_bytes("2b7e151628aed2a6abf7158809cf4f3c")
+    let aes_iv = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f")
+    let aes_payload = "Alya cryptographic root facade test payload"
+    let cbc_res = crypto::encrypt_aes(aes128_k, aes_iv, aes_payload, crypto::CipherMode.Cbc)
+    let cbc_rec = crypto::decrypt_aes(aes128_k, aes_iv, cbc_res, crypto::CipherMode.Cbc)
+    runner_assert_str_eq(r, cbc_rec, aes_payload, "crypto::encrypt_aes / decrypt_aes CBC")
+
+    let ctr_res = crypto::encrypt_aes(aes128_k, aes_iv, aes_payload, crypto::CipherMode.Ctr)
+    let ctr_rec = crypto::decrypt_aes(aes128_k, aes_iv, ctr_res, crypto::CipherMode.Ctr)
+    runner_assert_str_eq(r, ctr_rec, aes_payload, "crypto::encrypt_aes / decrypt_aes CTR")
+
+    # Unified Facade: AEAD
+    let aead_key = crypto::hex_to_bytes("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f")
+    let aead_nonce = crypto::hex_to_bytes("070000004041424344454647")
+    let aead_out = crypto::encrypt_aead(aead_key, aead_nonce, "header-data", "secret-data")
+    let aead_plain = crypto::decrypt_aead(aead_key, aead_nonce, "header-data", aead_out["ciphertext"], aead_out["tag"])
+    runner_assert_str_eq(r, aead_plain, "secret-data", "crypto::encrypt_aead / decrypt_aead")
+end
+
+function main()
+    test_suite("crypto Package Comprehensive Test Suite")
+    let r = runner_new()
+
+    test_encodings(r)
+    test_hashes(r)
+    test_hmac_and_kdf(r)
+    test_ciphers(r)
+    test_poly1305_and_aead(r)
+    test_modern_hashes(r)
+    test_facades(r)
 
     let failed = runner_summary(r)
     if failed > 0

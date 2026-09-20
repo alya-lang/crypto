@@ -1,5 +1,7 @@
-# SHA-512 and SHA-384 Cryptographic Hash Functions (FIPS 180-4)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## SHA-512 and SHA-384 Cryptographic Hash Functions (FIPS 180-4)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## High-security 512-bit and 384-bit 64-bit word hash algorithms.
 
 import "../core/bits.alya"
 import "../encodings/hex.alya"
@@ -185,30 +187,72 @@ pub function _sha512_transform(data_bytes, is_384)
     return out
 end
 
-pub function sha512_bytes(data_bytes)
+## Computes SHA-512 512-bit hash of a byte array, returning 64 raw bytes.
+##
+## ### Parameters
+## - `data_bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 64-element byte array containing the digest.
+pub function sha512_bytes(data_bytes) -> array
     return _sha512_transform(data_bytes, 0)
 end
 
-pub function sha512_hex(msg)
+## Computes SHA-512 hash of an Alya string and returns as lowercase hex string.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 128-character lowercase hex digest string.
+pub function sha512_hex(msg: str) -> str
     let bytes = str_to_bytes(msg)
     let digest = sha512_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-pub function sha512(msg)
+## Computes SHA-512 hash of an Alya string. Alias for `sha512_hex`.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 128-character lowercase hex digest string.
+pub function sha512(msg: str) -> str
     return sha512_hex(msg)
 end
 
-pub function sha384_bytes(data_bytes)
+## Computes SHA-384 384-bit hash of a byte array, returning 48 raw bytes.
+##
+## ### Parameters
+## - `data_bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 48-element byte array containing the digest.
+pub function sha384_bytes(data_bytes) -> array
     return _sha512_transform(data_bytes, 1)
 end
 
-pub function sha384_hex(msg)
+## Computes SHA-384 hash of an Alya string and returns as lowercase hex string.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 96-character lowercase hex digest string.
+pub function sha384_hex(msg: str) -> str
     let bytes = str_to_bytes(msg)
     let digest = sha384_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-pub function sha384(msg)
+## Computes SHA-384 hash of an Alya string. Alias for `sha384_hex`.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 96-character lowercase hex digest string.
+pub function sha384(msg: str) -> str
     return sha384_hex(msg)
 end

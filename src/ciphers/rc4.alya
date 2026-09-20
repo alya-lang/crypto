@@ -1,9 +1,19 @@
-# RC4 (Rivest Cipher 4) Stream Cipher
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## RC4 (Rivest Cipher 4) Stream Cipher
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Symmetric stream cipher using Key-Scheduling (KSA) and Pseudo-Random Generation (PRGA).
 
 import "../encodings/hex.alya"
 
-pub function rc4_process_bytes(key_bytes, data_bytes)
+## Processes data bytes through RC4 keystream XOR (symmetric encryption/decryption).
+##
+## ### Parameters
+## - `key_bytes`: Key byte array.
+## - `data_bytes`: Input byte array.
+##
+## ### Returns
+## Processed byte array.
+pub function rc4_process_bytes(key_bytes, data_bytes) -> array
     let klen = len(key_bytes)
     if klen == 0
         return data_bytes
@@ -48,22 +58,40 @@ pub function rc4_process_bytes(key_bytes, data_bytes)
     return out
 end
 
-pub function rc4_encrypt_bytes(key_bytes, plaintext_bytes)
+## Encrypts plaintext bytes using RC4. Alias for `rc4_process_bytes`.
+pub function rc4_encrypt_bytes(key_bytes, plaintext_bytes) -> array
     return rc4_process_bytes(key_bytes, plaintext_bytes)
 end
 
-pub function rc4_decrypt_bytes(key_bytes, ciphertext_bytes)
+## Decrypts ciphertext bytes using RC4. Alias for `rc4_process_bytes`.
+pub function rc4_decrypt_bytes(key_bytes, ciphertext_bytes) -> array
     return rc4_process_bytes(key_bytes, ciphertext_bytes)
 end
 
-pub function rc4_encrypt(key_str, plaintext_str)
+## Encrypts a plaintext string using RC4, returning lowercase hex ciphertext.
+##
+## ### Parameters
+## - `key_str`: Key string.
+## - `plaintext_str`: Plaintext string.
+##
+## ### Returns
+## Hexadecimal ciphertext string.
+pub function rc4_encrypt(key_str: str, plaintext_str: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let ct = rc4_process_bytes(k_bytes, p_bytes)
     return bytes_to_hex(ct)
 end
 
-pub function rc4_decrypt(key_str, ciphertext_hex)
+## Decrypts a hexadecimal RC4 ciphertext string back to plaintext.
+##
+## ### Parameters
+## - `key_str`: Key string.
+## - `ciphertext_hex`: Hexadecimal ciphertext string.
+##
+## ### Returns
+## Decrypted plaintext string.
+pub function rc4_decrypt(key_str: str, ciphertext_hex: str) -> str
     let k_bytes = str_to_bytes(key_str)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let dec_bytes = rc4_process_bytes(k_bytes, c_bytes)

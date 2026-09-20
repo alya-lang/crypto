@@ -1,8 +1,19 @@
-# Timing attack prevention utilities
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Cryptographic Security & Timing Attack Mitigation
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Provides constant-time equality comparisons to prevent timing side-channel attacks.
 
-# Constant-time comparison for strings (prevents timing side-channel attacks)
-pub function constant_time_eq(a, b)
+## Constant-time string equality check.
+##
+## Evaluates all characters regardless of mismatches to eliminate timing variance.
+##
+## ### Parameters
+## - `a`: First string.
+## - `b`: Second string.
+##
+## ### Returns
+## `true` if strings are equal, `false` otherwise.
+pub function constant_time_eq(a: str, b: str) -> bool
     let alen = len(a)
     let blen = len(b)
     if alen != blen
@@ -17,8 +28,17 @@ pub function constant_time_eq(a, b)
     return diff == 0
 end
 
-# Constant-time comparison for byte arrays
-pub function constant_time_eq_bytes(a, b)
+## Constant-time byte array equality check.
+##
+## Evaluates all array elements regardless of mismatches to eliminate timing variance.
+##
+## ### Parameters
+## - `a`: First byte array.
+## - `b`: Second byte array.
+##
+## ### Returns
+## `true` if byte arrays are equal, `false` otherwise.
+pub function constant_time_eq_bytes(a, b) -> bool
     let alen = len(a)
     let blen = len(b)
     if alen != blen

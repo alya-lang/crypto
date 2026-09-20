@@ -1,10 +1,22 @@
-# Password-Based Key Derivation Function 2 (PBKDF2 - RFC 2898 / PKCS #5)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Password-Based Key Derivation Function 2 (PBKDF2 - RFC 2898 / PKCS #5)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Key stretching algorithm using iterated HMAC-SHA256.
 
 import "../encodings/hex.alya"
 import "../mac/hmac.alya"
 
-pub function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
+## Derives cryptographic key bytes using PBKDF2 with HMAC-SHA256.
+##
+## ### Parameters
+## - `pwd_bytes`: Password byte array.
+## - `salt_bytes`: Cryptographic salt byte array.
+## - `iterations`: Iteration count for computational work.
+## - `key_len`: Desired output key length in bytes.
+##
+## ### Returns
+## Derived key byte array of length `key_len`.
+pub function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations: int, key_len: int) -> array
     let slen = len(salt_bytes)
     let derived = []
     let block_index = 1
@@ -53,13 +65,33 @@ pub function pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len
     return derived
 end
 
-pub function pbkdf2_hmac_sha256_hex(password_str, salt_str, iterations, key_len)
+## Derives cryptographic key as lowercase hex using PBKDF2 with HMAC-SHA256.
+##
+## ### Parameters
+## - `password_str`: Password string.
+## - `salt_str`: Salt string.
+## - `iterations`: Iteration count.
+## - `key_len`: Output key length in bytes.
+##
+## ### Returns
+## Lowercase hex representation of derived key.
+pub function pbkdf2_hmac_sha256_hex(password_str: str, salt_str: str, iterations: int, key_len: int) -> str
     let pwd_bytes = str_to_bytes(password_str)
     let salt_bytes = str_to_bytes(salt_str)
     let bytes = pbkdf2_hmac_sha256_bytes(pwd_bytes, salt_bytes, iterations, key_len)
     return bytes_to_hex(bytes)
 end
 
-pub function pbkdf2_hmac_sha256(password, salt, iterations, key_len)
+## Derives cryptographic key. Alias for `pbkdf2_hmac_sha256_hex`.
+##
+## ### Parameters
+## - `password`: Password string.
+## - `salt`: Salt string.
+## - `iterations`: Iteration count.
+## - `key_len`: Output key length in bytes.
+##
+## ### Returns
+## Lowercase hex representation of derived key.
+pub function pbkdf2_hmac_sha256(password: str, salt: str, iterations: int, key_len: int) -> str
     return pbkdf2_hmac_sha256_hex(password, salt, iterations, key_len)
 end

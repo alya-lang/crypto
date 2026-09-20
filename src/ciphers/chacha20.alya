@@ -1,5 +1,7 @@
-# ChaCha20 Stream Cipher (RFC 8439)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## ChaCha20 Stream Cipher (RFC 8439)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## High-speed 256-bit stream cipher using 20 rounds of quarter-round operations.
 
 import "../core/bits.alya"
 import "../encodings/hex.alya"
@@ -12,6 +14,15 @@ pub function _u32_le(byte_arr, offset)
     return bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
 end
 
+## Generates a 64-byte keystream block using the ChaCha20 block function.
+##
+## ### Parameters
+## - `key_bytes`: 32-byte key array.
+## - `counter`: 32-bit block counter.
+## - `nonce_bytes`: 12-byte nonce array.
+##
+## ### Returns
+## 64-element keystream byte array.
 pub function chacha20_block(key_bytes, counter, nonce_bytes)
     let state = [
         1634760805, 857760878,  2036477234, 1797285236,
@@ -121,6 +132,16 @@ pub function chacha20_block(key_bytes, counter, nonce_bytes)
     return block_out
 end
 
+## Processes data using the ChaCha20 stream cipher (symmetric encryption and decryption).
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `initial_counter` - Initial 32-bit block counter value.
+## * `data_bytes` - Input byte array to encrypt or decrypt.
+##
+## # Returns
+## Output byte array after XORing with keystream.
 pub function chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, data_bytes)
     let out = []
     let dlen = len(data_bytes)
@@ -147,20 +168,60 @@ pub function chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, dat
     return out
 end
 
+## Encrypts plaintext bytes using ChaCha20 stream cipher.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `initial_counter` - Initial counter value (usually 1).
+## * `plaintext_bytes` - Plaintext byte array.
+##
+## # Returns
+## Ciphertext byte array.
 pub function chacha20_encrypt_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
     return chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, plaintext_bytes)
 end
 
+## Decrypts ciphertext bytes using ChaCha20 stream cipher.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `initial_counter` - Initial counter value (usually 1).
+## * `ciphertext_bytes` - Ciphertext byte array.
+##
+## # Returns
+## Decrypted plaintext byte array.
 pub function chacha20_decrypt_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
     return chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, ciphertext_bytes)
 end
 
+## Encrypts a plaintext string using ChaCha20 stream cipher.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `initial_counter` - Initial counter value.
+## * `plaintext_str` - Plaintext string to encrypt.
+##
+## # Returns
+## Hex-encoded ciphertext string.
 pub function chacha20_encrypt(key_bytes, nonce_bytes, initial_counter, plaintext_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let c_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, p_bytes)
     return bytes_to_hex(c_bytes)
 end
 
+## Decrypts a hex-encoded ciphertext string using ChaCha20 stream cipher.
+##
+## # Arguments
+## * `key_bytes` - 32-byte secret key array.
+## * `nonce_bytes` - 12-byte nonce array.
+## * `initial_counter` - Initial counter value.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+##
+## # Returns
+## Decrypted plaintext string.
 pub function chacha20_decrypt(key_bytes, nonce_bytes, initial_counter, ciphertext_hex)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let d_bytes = chacha20_process_bytes(key_bytes, nonce_bytes, initial_counter, c_bytes)

@@ -1,32 +1,41 @@
-# MD5 Message-Digest Algorithm (RFC 1321)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## MD5 Message-Digest Algorithm (RFC 1321)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## 128-bit cryptographic digest algorithm implementation.
 
 import "../encodings/hex.alya"
 import "../core/bits.alya"
 
 pub function _md5_s()
     return [
-        7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
-        5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
-        4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
-        6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21
+        7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+        5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+        4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+        6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
     ]
 end
 
 pub function _md5_k()
     return [
-        3614090360, 3905402710,  606105819, 3250441966, 4118548399, 1200080426, 2821735955, 4249261313,
+        3614090360, 3905402710, 606105819, 3250441966, 4118548399, 1200080426, 2821735955, 4249261313,
         1770035416, 2336552879, 4294925233, 2304563134, 1804603682, 4254626195, 2792965006, 1236535329,
-        4129170786, 3225465664,  643717713, 3921069994, 3593408605,   38016083, 3634488961, 3889429448,
+        4129170786, 3225465664, 643717713, 3921069994, 3593408605, 38016083, 3634488961, 3889429448,
         568446438, 3275163606, 4107603335, 1163531501, 2850285829, 4243563512, 1735328473, 2368359562,
         4294588738, 2272392833, 1839030562, 4259657740, 2763975236, 1272893353, 4139469664, 3200236656,
-        681279174, 3936430074, 3572445317,   76029189, 3654602809, 3873151461,  530742520, 3299628645,
+        681279174, 3936430074, 3572445317, 76029189, 3654602809, 3873151461, 530742520, 3299628645,
         4096336452, 1126891415, 2878612391, 4237533241, 1700485571, 2399980690, 4293915773, 2240044497,
-        1873313359, 4264355552, 2734768916, 1309151649, 4149444226, 3174756917,  718787259, 3951481745
+        1873313359, 4264355552, 2734768916, 1309151649, 4149444226, 3174756917, 718787259, 3951481745
     ]
 end
 
-pub function md5_bytes(data_bytes)
+## Computes MD5 128-bit digest of a byte array, returning 16 raw bytes.
+##
+## ### Parameters
+## - `data_bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 16-element byte array containing the digest.
+pub function md5_bytes(data_bytes) -> array
     let msg_len = len(data_bytes)
     let total_bits = msg_len * 8
 
@@ -91,21 +100,23 @@ pub function md5_bytes(data_bytes)
         while j < 64
             let f = 0
             let g = 0
-            if j < 16
-                let not_b = bit_xor(b, 4294967295)
-                f = bit_or(bit_and(b, c), bit_and(not_b, d))
-                g = j
-            elif j < 32
-                let not_d = bit_xor(d, 4294967295)
-                f = bit_or(bit_and(d, b), bit_and(not_d, c))
-                g = (5 * j + 1) % 16
-            elif j < 48
-                f = bit_xor(b, bit_xor(c, d))
-                g = (3 * j + 5) % 16
-            else
-                let not_d = bit_xor(d, 4294967295)
-                f = bit_xor(c, bit_or(b, not_d))
-                g = (7 * j) % 16
+            let round = j / 16
+            when round
+                is 0 then
+                    let not_b = bit_xor(b, 4294967295)
+                    f = bit_or(bit_and(b, c), bit_and(not_b, d))
+                    g = j
+                is 1 then
+                    let not_d = bit_xor(d, 4294967295)
+                    f = bit_or(bit_and(d, b), bit_and(not_d, c))
+                    g = (5 * j + 1) % 16
+                is 2 then
+                    f = bit_xor(b, bit_xor(c, d))
+                    g = (3 * j + 5) % 16
+                else
+                    let not_d = bit_xor(d, 4294967295)
+                    f = bit_xor(c, bit_or(b, not_d))
+                    g = (7 * j) % 16
             end
 
             let temp_f = bit_and(f + a + k[j] + m[g], 4294967295)
@@ -139,12 +150,26 @@ pub function md5_bytes(data_bytes)
     return out
 end
 
-pub function md5_hex(msg)
+## Computes MD5 hash of an Alya string and returns as lowercase hex string.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 32-character lowercase hex digest string.
+pub function md5_hex(msg: str) -> str
     let bytes = str_to_bytes(msg)
     let digest = md5_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-pub function md5(msg)
+## Computes MD5 hash of an Alya string. Alias for `md5_hex`.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 32-character lowercase hex digest string.
+pub function md5(msg: str) -> str
     return md5_hex(msg)
 end

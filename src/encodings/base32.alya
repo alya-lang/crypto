@@ -1,7 +1,17 @@
-# Standard Base32 encoding and decoding utilities (RFC 4648 & Crockford)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Base32 Encoding & Decoding (RFC 4648)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Standard Base32 text encoding and decoding routines.
 
-pub function base32_encode_bytes(bytes, pad = 1)
+## Encodes a byte array into a Base32 string with optional padding.
+##
+## ### Parameters
+## - `bytes`: Byte array integers `[0..255]`.
+## - `pad`: `1` to append `'='` padding characters, `0` for raw unpadded output.
+##
+## ### Returns
+## Encoded Base32 string.
+pub function base32_encode_bytes(bytes, pad: int = 1) -> str
     let b32_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
     let blen = len(bytes)
     let res = ""
@@ -42,34 +52,42 @@ pub function base32_encode_bytes(bytes, pad = 1)
 
         res = res + char_at(b32_chars, c0) + char_at(b32_chars, c1)
 
-        if count == 1
-            if pad == 1
-                res = res + "======"
-            end
-        elif count == 2
-            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3)
-            if pad == 1
-                res = res + "===="
-            end
-        elif count == 3
-            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4)
-            if pad == 1
-                res = res + "==="
-            end
-        elif count == 4
-            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6)
-            if pad == 1
-                res = res + "="
-            end
-        else
-            res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6) + char_at(b32_chars, c7)
+        when count
+            is 1 then
+                if pad == 1
+                    res = res + "======"
+                end
+            is 2 then
+                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3)
+                if pad == 1
+                    res = res + "===="
+                end
+            is 3 then
+                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4)
+                if pad == 1
+                    res = res + "==="
+                end
+            is 4 then
+                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6)
+                if pad == 1
+                    res = res + "="
+                end
+            else
+                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6) + char_at(b32_chars, c7)
         end
         i += 5
     end
     return res
 end
 
-pub function base32_encode(s)
+## Encodes an Alya string into standard Base32 representation with padding.
+##
+## ### Parameters
+## - `s`: Input string.
+##
+## ### Returns
+## Encoded Base32 string.
+pub function base32_encode(s: str) -> str
     let slen = len(s)
     let bytes = []
     let i = 0
@@ -80,7 +98,8 @@ pub function base32_encode(s)
     return base32_encode_bytes(bytes, 1)
 end
 
-pub function _b32_val(ch)
+## Resolves numeric value of a Base32 character (case-insensitive).
+pub function _b32_val(ch) -> int
     let c = ord(ch)
     when c
         is 65..90 then return c - 65      # A-Z -> 0-25
@@ -90,7 +109,14 @@ pub function _b32_val(ch)
     end
 end
 
-pub function base32_decode_bytes(s)
+## Decodes a Base32 string into raw byte integers.
+##
+## ### Parameters
+## - `s`: Base32 encoded string.
+##
+## ### Returns
+## Array of byte integers.
+pub function base32_decode_bytes(s: str) -> array
     let slen = len(s)
     let bytes = []
     let buf = 0
@@ -115,7 +141,14 @@ pub function base32_decode_bytes(s)
     return bytes
 end
 
-pub function base32_decode(s)
+## Decodes a Base32 string back into an Alya string.
+##
+## ### Parameters
+## - `s`: Base32 encoded string.
+##
+## ### Returns
+## Decoded UTF-8 string.
+pub function base32_decode(s: str) -> str
     let bytes = base32_decode_bytes(s)
     let res = ""
     let blen = len(bytes)
@@ -127,7 +160,14 @@ pub function base32_decode(s)
     return res
 end
 
-pub function is_base32(s)
+## Validates whether a string conforms to Base32 encoding syntax.
+##
+## ### Parameters
+## - `s`: String to validate.
+##
+## ### Returns
+## `1` if valid Base32, `0` otherwise.
+pub function is_base32(s: str) -> int
     let slen = len(s)
     if slen == 0
         return 1
@@ -143,10 +183,12 @@ pub function is_base32(s)
     return 1
 end
 
-pub function to_base32(s)
+## Alias for `base32_encode`.
+pub function to_base32(s: str) -> str
     return base32_encode(s)
 end
 
-pub function from_base32(s)
+## Alias for `base32_decode`.
+pub function from_base32(s: str) -> str
     return base32_decode(s)
 end

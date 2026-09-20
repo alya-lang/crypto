@@ -1,5 +1,7 @@
-# SHA-256 and SHA-224 Cryptographic Hash Functions (FIPS 180-4)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## SHA-256 and SHA-224 Cryptographic Hash Functions (FIPS 180-4)
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Secure 256-bit and 224-bit NIST standard cryptographic hash algorithms.
 
 import "../encodings/hex.alya"
 import "../core/bits.alya"
@@ -154,30 +156,72 @@ pub function _sha256_transform(data_bytes, is_224)
     return out
 end
 
-pub function sha256_bytes(bytes)
+## Computes SHA-256 256-bit hash of a byte array, returning 32 raw bytes.
+##
+## ### Parameters
+## - `bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 32-element byte array containing the digest.
+pub function sha256_bytes(bytes) -> array
     return _sha256_transform(bytes, 0)
 end
 
-pub function sha256_hex(msg)
+## Computes SHA-256 hash of an Alya string and returns as lowercase hex string.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function sha256_hex(msg: str) -> str
     let bytes = str_to_bytes(msg)
     let digest = sha256_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-pub function sha256(msg)
+## Computes SHA-256 hash of an Alya string. Alias for `sha256_hex`.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 64-character lowercase hex digest string.
+pub function sha256(msg: str) -> str
     return sha256_hex(msg)
 end
 
-pub function sha224_bytes(bytes)
+## Computes SHA-224 224-bit hash of a byte array, returning 28 raw bytes.
+##
+## ### Parameters
+## - `bytes`: Input byte array integers `[0..255]`.
+##
+## ### Returns
+## 28-element byte array containing the digest.
+pub function sha224_bytes(bytes) -> array
     return _sha256_transform(bytes, 1)
 end
 
-pub function sha224_hex(msg)
+## Computes SHA-224 hash of an Alya string and returns as lowercase hex string.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 56-character lowercase hex digest string.
+pub function sha224_hex(msg: str) -> str
     let bytes = str_to_bytes(msg)
     let digest = sha224_bytes(bytes)
     return bytes_to_hex(digest)
 end
 
-pub function sha224(msg)
+## Computes SHA-224 hash of an Alya string. Alias for `sha224_hex`.
+##
+## ### Parameters
+## - `msg`: Input string.
+##
+## ### Returns
+## 56-character lowercase hex digest string.
+pub function sha224(msg: str) -> str
     return sha224_hex(msg)
 end

@@ -1,14 +1,30 @@
-# Entropy and Randomness Utilities
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Cryptographic Entropy & Randomness Utilities
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Secure random byte and hex string generation.
 
 import "rand" as rand
 import "../encodings/hex.alya"
 
-pub function random_bytes(count)
+## Generates cryptographically secure pseudorandom byte array of specified length.
+##
+## ### Parameters
+## - `count`: Number of random bytes to generate.
+##
+## ### Returns
+## Array of random byte integers `[0..255]`.
+pub function random_bytes(count: int) -> array
     return rand::bytes(count)
 end
 
-pub function random_hex(count)
+## Generates cryptographically secure pseudorandom hexadecimal string.
+##
+## ### Parameters
+## - `count`: Number of random bytes to generate (output hex length will be `2 * count`).
+##
+## ### Returns
+## Lowercase hex string of length `2 * count`.
+pub function random_hex(count: int) -> str
     let b = random_bytes(count)
     return bytes_to_hex(b)
 end

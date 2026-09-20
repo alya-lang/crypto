@@ -1,10 +1,14 @@
-# Advanced Encryption Standard (AES) - FIPS 197
-# Supports AES-128 (16-byte key) and AES-256 (32-byte key)
-# Modes: CBC (PKCS#7 padded) and CTR (Counter stream mode)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # Advanced Encryption Standard (AES) - FIPS 197
+##
+## Implements AES-128 and AES-256 block cipher operations with support for
+## CBC (Cipher Block Chaining with PKCS#7 padding) and CTR (Counter stream) modes.
 
 import "../encodings/hex.alya"
 
+## Returns the AES forward S-box substitution table.
+##
+## # Returns
+## Array of 256 substitution byte values.
 pub function get_aes_sbox()
     return [
         99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118,
@@ -26,6 +30,10 @@ pub function get_aes_sbox()
     ]
 end
 
+## Returns the AES inverse S-box substitution table.
+##
+## # Returns
+## Array of 256 inverse substitution byte values.
 pub function get_aes_rsbox()
     return [
         82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251,
@@ -47,10 +55,21 @@ pub function get_aes_rsbox()
     ]
 end
 
+## Returns the AES round constant (Rcon) table.
+##
+## # Returns
+## Array of 11 round constants.
 pub function get_aes_rcon()
     return [0, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54]
 end
 
+## Multiplies an 8-bit value by 2 in GF(2^8).
+##
+## # Arguments
+## * `a` - 8-bit input value.
+##
+## # Returns
+## Result of multiplication modulo x^8 + x^4 + x^3 + x + 1.
 pub function _aes_xtime(a)
     let shifted = bit_shl(a, 1)
     if bit_and(a, 128) != 0
@@ -59,6 +78,14 @@ pub function _aes_xtime(a)
     return bit_and(shifted, 255)
 end
 
+## Multiplies two 8-bit elements in GF(2^8).
+##
+## # Arguments
+## * `a` - First element.
+## * `b` - Second element.
+##
+## # Returns
+## Product in GF(2^8).
 pub function _aes_gf_mul(a, b)
     let res = 0
     let temp_a = a
@@ -73,6 +100,13 @@ pub function _aes_gf_mul(a, b)
     return res
 end
 
+## Expands a 128-bit or 256-bit AES cipher key into round keys.
+##
+## # Arguments
+## * `key_bytes` - 16-byte (AES-128) or 32-byte (AES-256) key array.
+##
+## # Returns
+## Two-element array: `[expanded_key_words, round_count]`.
 pub function aes_key_expansion(key_bytes)
     let sbox = get_aes_sbox()
     let rcon = get_aes_rcon()
@@ -143,6 +177,15 @@ pub function aes_key_expansion(key_bytes)
     return [w, nr]
 end
 
+## Encrypts a single 16-byte block using AES.
+##
+## # Arguments
+## * `exp_keys` - Expanded round key word array.
+## * `nr` - Number of rounds (10 for AES-128, 14 for AES-256).
+## * `block16` - 16-byte plaintext input block.
+##
+## # Returns
+## 16-byte encrypted ciphertext block.
 pub function aes_encrypt_block(exp_keys, nr, block16)
     let sbox = get_aes_sbox()
     let s = []
@@ -247,6 +290,15 @@ pub function aes_encrypt_block(exp_keys, nr, block16)
     return s
 end
 
+## Decrypts a single 16-byte block using AES.
+##
+## # Arguments
+## * `exp_keys` - Expanded round key word array.
+## * `nr` - Number of rounds (10 for AES-128, 14 for AES-256).
+## * `block16` - 16-byte ciphertext input block.
+##
+## # Returns
+## 16-byte decrypted plaintext block.
 pub function aes_decrypt_block(exp_keys, nr, block16)
     let rsbox = get_aes_rsbox()
     let s = []
@@ -350,7 +402,14 @@ pub function aes_decrypt_block(exp_keys, nr, block16)
     return s
 end
 
-# PKCS#7 Padding
+## Applies PKCS#7 padding to a byte array to align to block size.
+##
+## # Arguments
+## * `data_bytes` - Input unpadded byte array.
+## * `block_size` - Cipher block size in bytes (default: 16).
+##
+## # Returns
+## Padded byte array.
 pub function pkcs7_pad(data_bytes, block_size = 16)
     let dlen = len(data_bytes)
     let pad_len = block_size - (dlen % block_size)
@@ -368,6 +427,13 @@ pub function pkcs7_pad(data_bytes, block_size = 16)
     return out_padded
 end
 
+## Removes PKCS#7 padding from a byte array.
+##
+## # Arguments
+## * `data_bytes` - Padded byte array.
+##
+## # Returns
+## Unpadded byte array, or original array if padding is invalid.
 pub function pkcs7_unpad(data_bytes)
     let dlen = len(data_bytes)
     if dlen == 0
@@ -394,7 +460,15 @@ pub function pkcs7_unpad(data_bytes)
     return out_unpadded
 end
 
-# AES-CBC Mode
+## Encrypts plaintext bytes in AES Cipher Block Chaining (CBC) mode with PKCS#7 padding.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initialization vector array.
+## * `plaintext_bytes` - Input plaintext byte array.
+##
+## # Returns
+## Padded ciphertext byte array.
 pub function aes_cbc_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
     let exp_info = aes_key_expansion(key_bytes)
     let w = exp_info[0]
@@ -434,6 +508,15 @@ pub function aes_cbc_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
     return out
 end
 
+## Decrypts ciphertext bytes in AES CBC mode and strips PKCS#7 padding.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initialization vector array.
+## * `ciphertext_bytes` - Padded ciphertext byte array.
+##
+## # Returns
+## Unpadded plaintext byte array.
 pub function aes_cbc_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
     let exp_info = aes_key_expansion(key_bytes)
     let w = exp_info[0]
@@ -472,19 +555,40 @@ pub function aes_cbc_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
     return pkcs7_unpad(out_padded)
 end
 
+## Encrypts a plaintext string in AES CBC mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initialization vector array.
+## * `plaintext_str` - Plaintext string.
+##
+## # Returns
+## Hex-encoded ciphertext string.
 pub function aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let c_bytes = aes_cbc_encrypt_bytes(key_bytes, iv_bytes, p_bytes)
     return bytes_to_hex(c_bytes)
 end
 
+## Decrypts a hex-encoded ciphertext string in AES CBC mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initialization vector array.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+##
+## # Returns
+## Decrypted plaintext string.
 pub function aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let d_bytes = aes_cbc_decrypt_bytes(key_bytes, iv_bytes, c_bytes)
     return bytes_to_str(d_bytes)
 end
 
-# AES-CTR Mode
+## Increments a 16-byte big-endian counter in-place.
+##
+## # Arguments
+## * `ctr16` - 16-byte counter array.
 pub function _aes_inc_counter(ctr16)
     let i = 15
     while i >= 0
@@ -496,6 +600,15 @@ pub function _aes_inc_counter(ctr16)
     end
 end
 
+## Processes data using AES Counter (CTR) mode stream cipher.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initial counter block.
+## * `data_bytes` - Input byte array to encrypt or decrypt.
+##
+## # Returns
+## Processed byte array.
 pub function aes_ctr_process_bytes(key_bytes, iv_bytes, data_bytes)
     let exp_info = aes_key_expansion(key_bytes)
     let w = exp_info[0]
@@ -533,20 +646,56 @@ pub function aes_ctr_process_bytes(key_bytes, iv_bytes, data_bytes)
     return out
 end
 
+## Encrypts plaintext bytes in AES CTR mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initial counter block.
+## * `plaintext_bytes` - Plaintext byte array.
+##
+## # Returns
+## Ciphertext byte array.
 pub function aes_ctr_encrypt_bytes(key_bytes, iv_bytes, plaintext_bytes)
     return aes_ctr_process_bytes(key_bytes, iv_bytes, plaintext_bytes)
 end
 
+## Decrypts ciphertext bytes in AES CTR mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initial counter block.
+## * `ciphertext_bytes` - Ciphertext byte array.
+##
+## # Returns
+## Decrypted plaintext byte array.
 pub function aes_ctr_decrypt_bytes(key_bytes, iv_bytes, ciphertext_bytes)
     return aes_ctr_process_bytes(key_bytes, iv_bytes, ciphertext_bytes)
 end
 
+## Encrypts a plaintext string in AES CTR mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initial counter block.
+## * `plaintext_str` - Plaintext string.
+##
+## # Returns
+## Hex-encoded ciphertext string.
 pub function aes_ctr_encrypt(key_bytes, iv_bytes, plaintext_str)
     let p_bytes = str_to_bytes(plaintext_str)
     let c_bytes = aes_ctr_process_bytes(key_bytes, iv_bytes, p_bytes)
     return bytes_to_hex(c_bytes)
 end
 
+## Decrypts a hex-encoded ciphertext string in AES CTR mode.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `iv_bytes` - 16-byte initial counter block.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+##
+## # Returns
+## Decrypted plaintext string.
 pub function aes_ctr_decrypt(key_bytes, iv_bytes, ciphertext_hex)
     let c_bytes = hex_to_bytes(ciphertext_hex)
     let d_bytes = aes_ctr_process_bytes(key_bytes, iv_bytes, c_bytes)
