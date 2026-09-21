@@ -12,3 +12,7 @@ keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "s
 
 [dependencies]
 rand = { git = "https://github.com/alya-lang/rand", tag = "v0.1.0" }
+
+# [lint]
+# disabled_rules = []
+# exclude = []
