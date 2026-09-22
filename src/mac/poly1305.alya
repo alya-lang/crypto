@@ -6,7 +6,8 @@
 import "../core/security.alya"
 import "../encodings/hex.alya"
 
-pub function _u8to32(arr, offset)
+## Reads 4 bytes as a little-endian u32.
+pub function _u8to32(arr, offset: int) -> int
     let b0 = arr[offset]
     let b1 = arr[offset + 1]
     let b2 = arr[offset + 2]

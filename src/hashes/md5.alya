@@ -6,7 +6,8 @@
 import "../encodings/hex.alya"
 import "../core/bits.alya"
 
-pub function _md5_s()
+## Returns the MD5 shift schedule.
+pub function _md5_s() -> array
     return [
         7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
         5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
@@ -15,7 +16,8 @@ pub function _md5_s()
     ]
 end
 
-pub function _md5_k()
+## Returns the MD5 sine table.
+pub function _md5_k() -> array
     return [
         3614090360, 3905402710, 606105819, 3250441966, 4118548399, 1200080426, 2821735955, 4249261313,
         1770035416, 2336552879, 4294925233, 2304563134, 1804603682, 4254626195, 2792965006, 1236535329,

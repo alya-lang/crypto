@@ -6,7 +6,8 @@
 import "../core/bits.alya"
 import "../encodings/hex.alya"
 
-pub function _get_keccak_rc()
+## Returns the Keccak round constants.
+pub function _get_keccak_rc() -> array
     return [
         u64(0, 1), u64(0, 32898), u64(2147483648, 32906), u64(2147483648, 2147516416),
         u64(0, 32907), u64(0, 2147483649), u64(2147483648, 2147516545), u64(2147483648, 32777),
@@ -17,7 +18,8 @@ pub function _get_keccak_rc()
     ]
 end
 
-pub function _get_keccak_r()
+## Returns the Keccak rotation offsets.
+pub function _get_keccak_r() -> array
     return [
         0, 36, 3, 41, 18,
         1, 44, 10, 45, 2,
@@ -27,7 +29,8 @@ pub function _get_keccak_r()
     ]
 end
 
-pub function _keccak_f1600(a)
+## Applies the Keccak-f[1600] permutation.
+pub function _keccak_f1600(a) -> array
     let rc = _get_keccak_rc()
     let r_table = _get_keccak_r()
 
@@ -103,7 +106,8 @@ pub function _keccak_f1600(a)
     end
 end
 
-pub function _sha3_engine(msg_bytes, rate_bytes, suffix, out_len)
+## Runs the sponge engine producing out_len bytes.
+pub function _sha3_engine(msg_bytes, rate_bytes, suffix: int, out_len: int) -> array
     let padded = []
     let mlen = len(msg_bytes)
     let i = 0

@@ -6,7 +6,8 @@
 import "../encodings/hex.alya"
 import "../core/bits.alya"
 
-pub function _sha256_k()
+## Returns the SHA-256 round constants.
+pub function _sha256_k() -> array
     return [
         1116352408, 1899447441, 3049323471, 3921009573, 961987163, 1508970993, 2453635748, 2870763221,
         3624381080, 310598401, 607225278, 1426881987, 1925078388, 2162078206, 2614888103, 3248222580,
@@ -19,7 +20,8 @@ pub function _sha256_k()
     ]
 end
 
-pub function _sha256_transform(data_bytes, is_224)
+## Compresses blocks with the SHA-256 transform.
+pub function _sha256_transform(data_bytes, is_224: int) -> array
     let msg_len = len(data_bytes)
     let total_bits = msg_len * 8
 

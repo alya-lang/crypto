@@ -6,14 +6,16 @@
 import "../core/bits.alya"
 import "../encodings/hex.alya"
 
-pub function _get_blake2s_iv()
+## Returns the BLAKE2s initialization vector.
+pub function _get_blake2s_iv() -> array
     return [
         1779033703, 3144134277, 1013904242, 2773480762,
         1359893119, 2600822924, 528734635,  1541459225
     ]
 end
 
-pub function _get_blake2s_sigma(round_idx)
+## Returns the BLAKE2s sigma schedule for a round.
+pub function _get_blake2s_sigma(round_idx: int) -> array
     let sigmas = [
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
@@ -29,7 +31,8 @@ pub function _get_blake2s_sigma(round_idx)
     return sigmas[round_idx]
 end
 
-pub function _blake2s_g(v, a, b, c, d, x, y)
+## Applies the BLAKE2s G mixing step in place.
+pub function _blake2s_g(v, a: int, b: int, c: int, d: int, x: int, y: int)
     v[a] = bit_and(v[a] + v[b] + x, 4294967295)
     v[d] = rotr32(bit_xor(v[d], v[a]), 16)
     v[c] = bit_and(v[c] + v[d], 4294967295)
@@ -41,7 +44,8 @@ pub function _blake2s_g(v, a, b, c, d, x, y)
     v[b] = rotr32(bit_xor(v[b], v[c]), 7)
 end
 
-pub function _blake2s_compress(h, block_words, t0, t1, is_last)
+## Compresses one BLAKE2s block into the state.
+pub function _blake2s_compress(h, block_words, t0: int, t1: int, is_last: int)
     let iv = _get_blake2s_iv()
     let v = []
     let i = 0
