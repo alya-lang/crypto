@@ -15,7 +15,7 @@ import "../encodings/hex.alya"
 ##
 ## # Returns
 ## Array of 8 bytes.
-pub function _u64_le(val: int) -> int
+pub function _u64_le(val: int) -> array
     let b = []
     let v = val
     let i = 0
@@ -213,7 +213,7 @@ end
 ##
 ## # Returns
 ## Dictionary with `"ciphertext"` and `"tag"` hex strings.
-pub function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str: string, plaintext_str: string) -> string
+pub function chacha20_poly1305_encrypt(key_bytes, nonce_bytes, aad_str: string, plaintext_str: string) -> map
     let aad_bytes = str_to_bytes(aad_str)
     let pt_bytes = str_to_bytes(plaintext_str)
     let res = chacha20_poly1305_encrypt_bytes(key_bytes, nonce_bytes, aad_bytes, pt_bytes)
