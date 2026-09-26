@@ -319,6 +319,38 @@ pub function bi_modexp_int(base, exp: int, modulo) -> array
     return result
 end
 
+## Modular exponentiation with a multi-limb exponent.
+##
+## Processes exponent limbs little-endian first, bit by bit. Required
+## for RSA private operations where the exponent exceeds 64 bits.
+##
+## # Arguments
+## * `base` - Base limbs.
+## * `exp_limbs` - Exponent little-endian 16-bit limbs.
+## * `modulo` - Modulus limbs.
+##
+## # Returns
+## `base^exp mod modulo` limb array.
+pub function bi_modexp(base, exp_limbs, modulo) -> array
+    let result = bi_mod([1], modulo)
+    let b = bi_mod(base, modulo)
+    let li = 0
+    while li < len(exp_limbs)
+        let mask = 1
+        let bit = 0
+        while bit < 16
+            if bit_and(exp_limbs[li], mask) != 0
+                result = bi_mod(bi_mul(result, b), modulo)
+            end
+            b = bi_mod(bi_mul(b, b), modulo)
+            mask = bit_shl(mask, 1)
+            bit += 1
+        end
+        li += 1
+    end
+    return result
+end
+
 ## Converts big-endian bytes to limbs.
 ##
 ## # Arguments

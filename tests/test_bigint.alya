@@ -44,6 +44,10 @@ function main()
     let mres = crypto::bi_modexp_int(mbase, 65537, mmod)
     runner_assert_str_eq(r, crypto::bytes_to_hex(crypto::bi_to_bytes(mres, 256)), "ccd1ebbb5f4ea8f0f9bb91c640c5934e5b234c79b07aa273bb2669e1d18e76437ba8c7d394ff69cb9c1ba0c1689b122e02f5d342280f39589f33df1bc21188b90fca80fae359094892674950a7ae68f39cdd46d1a44ba8117cb5f499ed1ea6ebc74a351366e829d9d398ce99ad2b767ea888507ba246f45814b1a32cef4d3dbcbe1b08669fb6156c342017ba8ae953708328ff527346ee283880ada5269762d45579a3d9a8d73efc8adddf7a47dbc097a83307c7b33c5e9af850f56bc328e21f96d98c7fd9776d3f683aba72885f961509a5114fcd4a84c41d02f878c335916313551030cdbf7f421ecb86224f83806bf241d539981d03d019f2051f8d2bd269", "modexp 2048-bit ground truth")
 
+    let mexp_limbs = crypto::bi_modexp(crypto::bi_from_bytes(crypto::hex_to_bytes("075bcd15")), crypto::bi_from_bytes(crypto::hex_to_bytes("010001")), crypto::bi_from_bytes(crypto::hex_to_bytes("00ffffffffffffffffffffffffffffff61")))
+    let mexp_small = crypto::bi_modexp_int(crypto::bi_from_bytes(crypto::hex_to_bytes("075bcd15")), 65537, crypto::bi_from_bytes(crypto::hex_to_bytes("00ffffffffffffffffffffffffffffff61")))
+    runner_assert_eq(r, crypto::bi_cmp(mexp_limbs, mexp_small), 0, "limb-exponent matches int-exponent")
+
     let failed = runner_summary(r)
     if failed > 0
         exit(1)
