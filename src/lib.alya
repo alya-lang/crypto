@@ -27,6 +27,7 @@ import "./ciphers/rc4.alya"
 import "./ciphers/chacha20.alya"
 import "./ciphers/chacha20poly1305.alya"
 import "./ciphers/aes.alya"
+import "./ciphers/aesgcm.alya"
 import "./random/entropy.alya"
 
 ## Computes a cryptographic hash of a text string using the specified algorithm.
@@ -315,11 +316,14 @@ end
 
 ## Encrypts plaintext in AES block cipher mode.
 ##
+## CBC and CTR modes only. GCM carries an authentication tag that this
+## signature cannot return — use `encrypt_aes_gcm` instead.
+##
 ## # Arguments
 ## * `key_bytes` - 16-byte or 32-byte secret key array.
 ## * `iv_bytes` - 16-byte initialization vector array.
 ## * `plaintext_str` - Plaintext string to encrypt.
-## * `mode` - `CipherMode` enum value.
+## * `mode` - `CipherMode` enum value (`Cbc` or `Ctr`).
 ##
 ## # Returns
 ## Hex-encoded ciphertext string.
@@ -330,17 +334,19 @@ pub function encrypt_aes(key_bytes, iv_bytes, plaintext_str: str, mode: CipherMo
         is CipherMode.Ctr then
             return aes_ctr_encrypt(key_bytes, iv_bytes, plaintext_str)
         else
-            return aes_cbc_encrypt(key_bytes, iv_bytes, plaintext_str)
+            throw "AES-GCM needs encrypt_aes_gcm (authentication tag required)"
     end
 end
 
 ## Decrypts ciphertext in AES block cipher mode.
 ##
+## CBC and CTR modes only. GCM authentication needs `decrypt_aes_gcm`.
+##
 ## # Arguments
 ## * `key_bytes` - 16-byte or 32-byte secret key array.
 ## * `iv_bytes` - 16-byte initialization vector array.
 ## * `ciphertext_hex` - Hex-encoded ciphertext string.
-## * `mode` - `CipherMode` enum value.
+## * `mode` - `CipherMode` enum value (`Cbc` or `Ctr`).
 ##
 ## # Returns
 ## Decrypted plaintext string.
@@ -351,8 +357,40 @@ pub function decrypt_aes(key_bytes, iv_bytes, ciphertext_hex: str, mode: CipherM
         is CipherMode.Ctr then
             return aes_ctr_decrypt(key_bytes, iv_bytes, ciphertext_hex)
         else
-            return aes_cbc_decrypt(key_bytes, iv_bytes, ciphertext_hex)
+            throw "AES-GCM needs decrypt_aes_gcm (authentication tag required)"
     end
+end
+
+## Encrypts plaintext with AES-GCM and generates a 128-bit authentication tag.
+##
+## # Arguments
+## * `key_bytes` - 16-byte (AES-128) or 32-byte (AES-256) key array.
+## * `nonce12` - 12-byte nonce array (unique per key).
+## * `aad_str` - Additional authenticated data string.
+## * `plaintext_str` - Plaintext string.
+##
+## # Returns
+## Dictionary containing `"ciphertext"` and `"tag"` hex strings.
+pub function encrypt_aes_gcm(key_bytes, nonce12, aad_str: str, plaintext_str: str)
+    return aes_gcm_encrypt(key_bytes, nonce12, aad_str, plaintext_str)
+end
+
+## Decrypts AES-GCM ciphertext and verifies the authentication tag.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `nonce12` - 12-byte nonce array.
+## * `aad_str` - Additional authenticated data string.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+## * `tag_hex` - Hex-encoded authentication tag string.
+##
+## # Returns
+## Decrypted plaintext string.
+##
+## # Errors
+## Throws an error if authentication tag verification fails.
+pub function decrypt_aes_gcm(key_bytes, nonce12, aad_str: str, ciphertext_hex: string, tag_hex: string) -> string
+    return aes_gcm_decrypt(key_bytes, nonce12, aad_str, ciphertext_hex, tag_hex)
 end
 
 ## Creates a default `CryptoConfig` configuration instance.

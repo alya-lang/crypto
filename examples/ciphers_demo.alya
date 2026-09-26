@@ -48,6 +48,17 @@ function main()
     let cc_pt = crypto::chacha20_decrypt(cc_key, cc_nonce, 1, cc_ct)
     say "   ChaCha20 Decrypted:  " + cc_pt
     say ""
+
+    # 5. AES-256-GCM AEAD Demo (NIST SP 800-38D)
+    say "5. AES-256-GCM Authenticated Encryption..."
+    let gcm_key = crypto::random_bytes(32)
+    let gcm_nonce = crypto::random_bytes(12)
+    let gcm_enc = crypto::encrypt_aes_gcm(gcm_key, gcm_nonce, "msg-header", secret_payload)
+    say "   GCM Ciphertext: " + gcm_enc["ciphertext"]
+    say "   GCM Tag:        " + gcm_enc["tag"]
+    let gcm_pt = crypto::decrypt_aes_gcm(gcm_key, gcm_nonce, "msg-header", gcm_enc["ciphertext"], gcm_enc["tag"])
+    say "   GCM Decrypted:  " + gcm_pt
+    say ""
     say "✓ Ciphers demo completed successfully!"
 end
 

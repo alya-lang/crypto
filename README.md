@@ -27,6 +27,7 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
   - Modular Crypt Format **password_hash** & **password_verify** with automatic salt generation
 - 🗝️ **Symmetric Ciphers**:
   - **AES** (FIPS 197): AES-128 and AES-256 in **CBC** (with PKCS#7 padding) and **CTR** stream mode
+  - **AES-GCM** (NIST SP 800-38D): AES-128/256 authenticated encryption, 96-bit nonces, 128-bit tags
   - **ChaCha20** (RFC 8439): 256-bit high-speed stream cipher
   - **RC4**: Classic Rivest Cipher 4 stream cipher
 - 🌐 **Encodings**:
@@ -35,7 +36,7 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
   - Base58 (Bitcoin alphanumeric alphabet)
 - ⏱️ **Timing Attack Protection**: Constant-time string and byte equality (`constant_time_eq`)
 - 🎲 **Entropy & Randomness**: Cryptographic UUID v4 and random byte generation
-- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (106 passing tests)
+- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (119 passing tests)
 
 ---
 
@@ -72,6 +73,7 @@ crypto/
 │   │   └── password.alya   # Modular crypt password hashing & verification
 │   ├── ciphers/
 │   │   ├── aes.alya        # AES-128 & AES-256 with CBC (PKCS#7) and CTR modes
+│   │   ├── aesgcm.alya     # AES-GCM AEAD, 96-bit nonces, GHASH (NIST SP 800-38D)
 │   │   ├── chacha20.alya   # ChaCha20 stream cipher (RFC 8439)
 │   │   ├── chacha20poly1305.alya # ChaCha20-Poly1305 AEAD cipher (RFC 8439)
 │   │   └── rc4.alya        # RC4 stream cipher
@@ -177,6 +179,10 @@ main()
 | `aes_cbc_decrypt(k, iv, ct)` | `k: list, iv: list, ct: str` | `string` | AES-128 / AES-256 CBC decryption with PKCS#7. |
 | `aes_ctr_encrypt(k, iv, pt)` | `k: list, iv: list, pt: str` | `string` | AES-128 / AES-256 CTR stream encryption (hex). |
 | `aes_ctr_decrypt(k, iv, ct)` | `k: list, iv: list, ct: str` | `string` | AES-128 / AES-256 CTR stream decryption. |
+| `aes_gcm_encrypt(k, n12, aad, pt)` | `k: list, n: list, aad: str, pt: str` | `map` | AES-GCM AEAD encryption returning `ciphertext` + `tag` (hex). |
+| `aes_gcm_decrypt(k, n12, aad, ct, tag)` | `k: list, n: list, aad: str, ct: str, tag: str` | `string` | AES-GCM AEAD decryption (throws on tag mismatch). |
+| `encrypt_aes_gcm(k, n12, aad, pt)` | `k: list, n: list, aad: str, pt: str` | `map` | Facade AES-GCM encryption. |
+| `decrypt_aes_gcm(k, n12, aad, ct, tag)` | `k: list, n: list, aad: str, ct: str, tag: str` | `string` | Facade AES-GCM decryption. |
 | `chacha20_encrypt(k, n, ctr, pt)` | `k: list, n: list, ctr: int, pt: str` | `string` | ChaCha20 stream encryption (RFC 8439). |
 | `chacha20_decrypt(k, n, ctr, ct)` | `k: list, n: list, ctr: int, ct: str` | `string` | ChaCha20 stream decryption (RFC 8439). |
 | `rc4_encrypt(key, pt)` | `key: str, pt: str` | `string` | RC4 stream encryption (hex). |

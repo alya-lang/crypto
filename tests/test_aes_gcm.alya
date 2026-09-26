@@ -1,0 +1,76 @@
+# AES-GCM test suite (NIST SP 800-38D vectors + roundtrips)
+import "std/test"
+import "../src/lib.alya" as crypto
+
+function main()
+    test_suite("AES-GCM Tests")
+    let r = runner_new()
+
+    # 1. FIPS-197 C.3 AES-256 block known answer
+    let k256 = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+    let exp256 = crypto::aes_key_expansion(k256)
+    let ct256 = crypto::aes_encrypt_block(exp256[0], exp256[1], crypto::hex_to_bytes("00112233445566778899aabbccddeeff"))
+    runner_assert_str_eq(r, crypto::bytes_to_hex(ct256), "8ea2b7ca516745bfeafc49904b496089", "FIPS-197 C.3 AES-256 ECB")
+
+    # 2. GCM spec Case 1: zero key, empty plaintext/AAD, zero nonce
+    let k0 = crypto::hex_to_bytes("00000000000000000000000000000000")
+    let n0 = crypto::hex_to_bytes("000000000000000000000000")
+    let v1 = crypto::aes_gcm_encrypt_bytes(k0, n0, [], [])
+    runner_assert_eq(r, len(v1[0]), 0, "case 1 empty ciphertext")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(v1[1]), "58e2fccefa7e3061367f1d57a4e7455a", "case 1 tag")
+
+    # 3. GCM spec Case 2: 16 zero plaintext bytes
+    let p16 = crypto::hex_to_bytes("00000000000000000000000000000000")
+    let v2 = crypto::aes_gcm_encrypt_bytes(k0, n0, [], p16)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(v2[0]), "0388dace60b6a392f328c2b971b2fe78", "case 2 ciphertext")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(v2[1]), "ab6e47d42cec13bdf53a67b21257bddf", "case 2 tag")
+
+    # 4. Decrypt roundtrip of the spec vector
+    let d2 = crypto::aes_gcm_decrypt_bytes(k0, n0, [], v2[0], v2[1])
+    runner_assert_str_eq(r, crypto::bytes_to_hex(d2), "00000000000000000000000000000000", "case 2 decrypt roundtrip")
+
+    # 5. Tampered tag must throw
+    let bad_tag = [v2[1][0], v2[1][1], v2[1][2], v2[1][3], v2[1][4], v2[1][5], v2[1][6], v2[1][7], v2[1][8], v2[1][9], v2[1][10], v2[1][11], v2[1][12], v2[1][13], v2[1][14], bit_xor(v2[1][15], 1)]
+    let threw = 0
+    try
+        crypto::aes_gcm_decrypt_bytes(k0, n0, [], v2[0], bad_tag)
+    catch e
+        threw = 1
+    end
+    runner_assert_eq(r, threw, 1, "tampered tag throws")
+
+    # 6. AES-256 string API roundtrip with AAD
+    let k2 = crypto::hex_to_bytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+    let n2 = crypto::hex_to_bytes("cafebabefacedbaddecaf888")
+    let enc = crypto::encrypt_aes_gcm(k2, n2, "header-data", "Hello, AES-GCM!")
+    runner_assert_eq(r, len(enc["tag"]), 32, "tag hex 32 chars")
+    runner_assert_str_eq(r, enc["ciphertext"], "c2c6cc4ac5566f5a0358709a3850a8", "aes-256-gcm ciphertext (x-checked)")
+    runner_assert_str_eq(r, enc["tag"], "47d15bfd0d419d26ec4862fb45c37f29", "aes-256-gcm tag (x-checked)")
+    let dec = crypto::decrypt_aes_gcm(k2, n2, "header-data", enc["ciphertext"], enc["tag"])
+    runner_assert_str_eq(r, dec, "Hello, AES-GCM!", "string roundtrip with AAD")
+
+    # 7. Wrong AAD must throw
+    let threw_aad = 0
+    try
+        crypto::decrypt_aes_gcm(k2, n2, "other-data", enc["ciphertext"], enc["tag"])
+    catch e
+        threw_aad = 1
+    end
+    runner_assert_eq(r, threw_aad, 1, "wrong AAD throws")
+
+    # 8. Generic dispatcher routes GCM to dedicated API with a clear error
+    let threw_disp = 0
+    try
+        crypto::decrypt_aes(k2, n2, enc["ciphertext"], crypto::CipherMode.Gcm)
+    catch e
+        threw_disp = 1
+    end
+    runner_assert_eq(r, threw_disp, 1, "dispatcher GCM decrypt throws guidance")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

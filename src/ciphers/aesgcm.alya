@@ -1,0 +1,333 @@
+## # AES Galois/Counter Mode (GCM) - NIST SP 800-38D
+##
+## Implements AES-128 and AES-256 authenticated encryption with 96-bit
+## nonces, arbitrary associated data, and 128-bit tags. Built on the
+## `aes.alya` block primitive plus a byte-wise GHASH multiplier.
+
+import "./aes.alya"
+import "../encodings/hex.alya"
+import "../core/security.alya"
+
+## Multiplies two 128-bit blocks in GF(2^128) (McGrew-Viega shift-right form).
+##
+## Reduction constant `R = 11100001 || 0^120` applies when the shifted-out
+## least-significant bit is set.
+##
+## # Arguments
+## * `x_bytes` - 16-byte multiplier array (bits read most-significant first).
+## * `y_bytes` - 16-byte multiplicand array.
+##
+## # Returns
+## 16-byte product array.
+pub function _gcm_mul(x_bytes, y_bytes) -> array
+    let z = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let v = []
+    let k = 0
+    while k < 16
+        v.push(y_bytes[k])
+        k += 1
+    end
+    let i = 0
+    while i < 128
+        let byte_idx = bit_shr(i, 3)
+        let bit_pos = 7 - bit_and(i, 7)
+        if bit_and(bit_shr(x_bytes[byte_idx], bit_pos), 1) != 0
+            let m = 0
+            while m < 16
+                z[m] = bit_xor(z[m], v[m])
+                m += 1
+            end
+        end
+        let lsb = bit_and(v[15], 1)
+        let carry = 0
+        let j = 0
+        while j < 16
+            let new_carry = bit_and(v[j], 1)
+            v[j] = bit_or(bit_shr(v[j], 1), bit_shl(carry, 7))
+            carry = new_carry
+            j += 1
+        end
+        if lsb != 0
+            v[0] = bit_xor(v[0], 225)
+        end
+        i += 1
+    end
+    return z
+end
+
+## Computes GHASH over padded associated data and ciphertext blocks.
+##
+## # Arguments
+## * `h_bytes` - 16-byte hash subkey (`AES_K(0^128)`).
+## * `aad_bytes` - Associated data byte array.
+## * `ct_bytes` - Ciphertext byte array.
+##
+## # Returns
+## 16-byte authenticator array.
+pub function _gcm_hash(h_bytes, aad_bytes, ct_bytes) -> array
+    let data = []
+    let i = 0
+    while i < len(aad_bytes)
+        data.push(aad_bytes[i])
+        i += 1
+    end
+    while len(data) % 16 != 0
+        data.push(0)
+    end
+    i = 0
+    while i < len(ct_bytes)
+        data.push(ct_bytes[i])
+        i += 1
+    end
+    while len(data) % 16 != 0
+        data.push(0)
+    end
+    let aad_bits = len(aad_bytes) * 8
+    let ct_bits = len(ct_bytes) * 8
+    let lens = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let b = 0
+    while b < 8
+        lens[b] = bit_and(bit_shr(aad_bits, 8 * (7 - b)), 255)
+        lens[8 + b] = bit_and(bit_shr(ct_bits, 8 * (7 - b)), 255)
+        b += 1
+    end
+    b = 0
+    while b < 16
+        data.push(lens[b])
+        b += 1
+    end
+    let y = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let off = 0
+    while off < len(data)
+        let blk = []
+        b = 0
+        while b < 16
+            blk.push(bit_xor(y[b], data[off + b]))
+            b += 1
+        end
+        y = _gcm_mul(blk, h_bytes)
+        off += 16
+    end
+    return y
+end
+
+## Increments the low 32-bit big-endian counter of a 16-byte block.
+##
+## Only bytes 12..15 wrap, per GCM counter discipline.
+##
+## # Arguments
+## * `ctr16` - 16-byte counter array (mutated in place).
+pub function _gcm_inc32(ctr16)
+    let i = 15
+    while i >= 12
+        ctr16[i] = (ctr16[i] + 1) % 256
+        if ctr16[i] != 0
+            break
+        end
+        i -= 1
+    end
+end
+
+## Encrypts blocks in GCTR mode starting after the given counter.
+##
+## # Arguments
+## * `exp_keys` - Expanded round key word array.
+## * `nr` - Number of AES rounds.
+## * `icb` - 16-byte initial counter block (first used counter is `inc32(icb)`).
+## * `data_bytes` - Input byte array.
+##
+## # Returns
+## Keystream-xored output byte array.
+pub function _gcm_gctr(exp_keys, nr: int, icb, data_bytes) -> array
+    let out = []
+    let dlen = len(data_bytes)
+    if dlen == 0
+        return out
+    end
+    let ctr = []
+    let i = 0
+    while i < 16
+        ctr.push(icb[i])
+        i += 1
+    end
+    let offset = 0
+    while offset < dlen
+        _gcm_inc32(ctr)
+        let pad = aes_encrypt_block(exp_keys, nr, ctr)
+        let chunk = 16
+        if offset + chunk > dlen
+            chunk = dlen - offset
+        end
+        i = 0
+        while i < chunk
+            out.push(bit_xor(data_bytes[offset + i], pad[i]))
+            i += 1
+        end
+        offset += chunk
+    end
+    return out
+end
+
+## Encrypts plaintext with AES-GCM using a 96-bit nonce.
+##
+## # Arguments
+## * `key_bytes` - 16-byte (AES-128) or 32-byte (AES-256) key array.
+## * `nonce12` - 12-byte nonce array (must be unique per key).
+## * `aad_bytes` - Additional authenticated data byte array.
+## * `plaintext_bytes` - Plaintext byte array.
+##
+## # Returns
+## Array containing `[ciphertext_bytes, tag_bytes]` (16-byte tag).
+pub function aes_gcm_encrypt_bytes(key_bytes, nonce12, aad_bytes, plaintext_bytes) -> array
+    if len(key_bytes) != 16 and len(key_bytes) != 32
+        throw "AES-GCM key must be 16 or 32 bytes"
+    end
+    if len(nonce12) != 12
+        throw "AES-GCM nonce must be 12 bytes"
+    end
+    let aad = aad_bytes
+    if aad is null
+        aad = []
+    end
+    let pt = plaintext_bytes
+    if pt is null
+        pt = []
+    end
+    let exp_info = aes_key_expansion(key_bytes)
+    let w = exp_info[0]
+    let nr = exp_info[1]
+    let zero = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let h = aes_encrypt_block(w, nr, zero)
+    let j0 = []
+    let i = 0
+    while i < 12
+        j0.push(nonce12[i])
+        i += 1
+    end
+    j0.push(0)
+    j0.push(0)
+    j0.push(0)
+    j0.push(1)
+    let ct = _gcm_gctr(w, nr, j0, pt)
+    let s = _gcm_hash(h, aad, ct)
+    let mask = aes_encrypt_block(w, nr, j0)
+    let tag = []
+    i = 0
+    while i < 16
+        tag.push(bit_xor(mask[i], s[i]))
+        i += 1
+    end
+    return [ct, tag]
+end
+
+## Decrypts and authenticates AES-GCM ciphertext with a 96-bit nonce.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `nonce12` - 12-byte nonce array.
+## * `aad_bytes` - Additional authenticated data byte array.
+## * `ciphertext_bytes` - Ciphertext byte array.
+## * `tag_bytes` - 16-byte authentication tag array.
+##
+## # Returns
+## Decrypted plaintext byte array.
+##
+## # Errors
+## Throws an error if authentication tag verification fails.
+pub function aes_gcm_decrypt_bytes(key_bytes, nonce12, aad_bytes, ciphertext_bytes, tag_bytes) -> array
+    if len(key_bytes) != 16 and len(key_bytes) != 32
+        throw "AES-GCM key must be 16 or 32 bytes"
+    end
+    if len(nonce12) != 12
+        throw "AES-GCM nonce must be 12 bytes"
+    end
+    if len(tag_bytes) != 16
+        throw "AES-GCM tag must be 16 bytes"
+    end
+    let aad = aad_bytes
+    if aad is null
+        aad = []
+    end
+    let ct = ciphertext_bytes
+    if ct is null
+        ct = []
+    end
+    let exp_info = aes_key_expansion(key_bytes)
+    let w = exp_info[0]
+    let nr = exp_info[1]
+    let zero = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let h = aes_encrypt_block(w, nr, zero)
+    let s = _gcm_hash(h, aad, ct)
+    let j0 = []
+    let i = 0
+    while i < 12
+        j0.push(nonce12[i])
+        i += 1
+    end
+    j0.push(0)
+    j0.push(0)
+    j0.push(0)
+    j0.push(1)
+    let mask = aes_encrypt_block(w, nr, j0)
+    let expected = []
+    i = 0
+    while i < 16
+        expected.push(bit_xor(mask[i], s[i]))
+        i += 1
+    end
+    if not constant_time_eq(bytes_to_hex(expected), bytes_to_hex(tag_bytes))
+        throw "AES-GCM authentication failed: invalid tag"
+    end
+    return _gcm_gctr(w, nr, j0, ct)
+end
+
+## Encrypts a plaintext string with AES-GCM and computes an authentication tag.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `nonce12` - 12-byte nonce array.
+## * `aad_str` - Additional authenticated data string.
+## * `plaintext_str` - Plaintext string.
+##
+## # Returns
+## Dictionary with `"ciphertext"` and `"tag"` hex strings.
+pub function aes_gcm_encrypt(key_bytes, nonce12, aad_str: string, plaintext_str: string) -> map
+    let aad = []
+    if aad_str is not null
+        aad = str_to_bytes(aad_str)
+    end
+    let pt = []
+    if plaintext_str is not null
+        pt = str_to_bytes(plaintext_str)
+    end
+    let res = aes_gcm_encrypt_bytes(key_bytes, nonce12, aad, pt)
+    return {
+        "ciphertext": bytes_to_hex(res[0]),
+        "tag": bytes_to_hex(res[1])
+    }
+end
+
+## Decrypts and authenticates a hex-encoded AES-GCM ciphertext string.
+##
+## # Arguments
+## * `key_bytes` - 16-byte or 32-byte secret key array.
+## * `nonce12` - 12-byte nonce array.
+## * `aad_str` - Additional authenticated data string.
+## * `ciphertext_hex` - Hex-encoded ciphertext string.
+## * `tag_hex` - Hex-encoded authentication tag string.
+##
+## # Returns
+## Decrypted plaintext string.
+##
+## # Errors
+## Throws an error if authentication tag verification fails.
+pub function aes_gcm_decrypt(key_bytes, nonce12, aad_str: string, ciphertext_hex: string, tag_hex: string) -> string
+    let aad = []
+    if aad_str is not null
+        aad = str_to_bytes(aad_str)
+    end
+    let ct = hex_to_bytes(ciphertext_hex)
+    let tag = hex_to_bytes(tag_hex)
+    let pt = aes_gcm_decrypt_bytes(key_bytes, nonce12, aad, ct, tag)
+    return bytes_to_str(pt)
+end

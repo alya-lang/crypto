@@ -162,6 +162,18 @@ function main()
     end
     bench_stop(runner, "sha3_256() 500 hashes")
 
+    # 17. AES-128-GCM AEAD (NIST SP 800-38D)
+    let gcm_k = crypto::hex_to_bytes("00000000000000000000000000000000")
+    let gcm_n = crypto::hex_to_bytes("000000000000000000000000")
+    let gcm_pt = crypto::str_to_bytes(msg)
+    bench_start(runner, 500)
+    let gcm_i = 0
+    while gcm_i < 500
+        crypto::aes_gcm_encrypt_bytes(gcm_k, gcm_n, aead_aad_b, gcm_pt)
+        gcm_i += 1
+    end
+    bench_stop(runner, "aes_gcm_encrypt() 500 operations")
+
     bench_summary(runner)
 end
 
