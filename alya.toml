@@ -1,6 +1,6 @@
 [package]
 name = "crypto"
-version = "0.1.0"
+version = "0.2.0"
 alya-version = "0.0.19"
 entry = "src/lib.alya"
 description = "Comprehensive cryptography, hashing, and cipher library for Alya (AES, ChaCha20-Poly1305, SHA-2/3, BLAKE2s, Keccak, KDF, Encodings)"
