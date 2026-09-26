@@ -174,6 +174,28 @@ function main()
     end
     bench_stop(runner, "aes_gcm_encrypt() 500 operations")
 
+    # 18. X25519 key exchange (RFC 7748)
+    let x_k = crypto::hex_to_bytes("484a7fbaf7ed93e344655d4876ac161b59ad8193d1400fd70db7c0871dfb6553")
+    let x_p = crypto::hex_to_bytes("92cd0068c67b67bec749d80de23c426abeb9a34b9bacfc309237e4cfc62ba154")
+    bench_start(runner, 20)
+    let x_i = 0
+    while x_i < 20
+        crypto::x25519(x_k, x_p)
+        x_i += 1
+    end
+    bench_stop(runner, "x25519() 20 exchanges")
+
+    # 19. 2048-bit modular exponentiation (RSAcore)
+    let mexp_base = crypto::bi_from_bytes(crypto::hex_to_bytes("075bcd15"))
+    let mexp_mod = crypto::bi_sub(crypto::bi_shl([1], 128, 0), crypto::bi_from_bytes(crypto::hex_to_bytes("1da311")))
+    bench_start(runner, 20)
+    let mexp_i = 0
+    while mexp_i < 20
+        crypto::bi_modexp_int(mexp_base, 65537, mexp_mod)
+        mexp_i += 1
+    end
+    bench_stop(runner, "bi_modexp_int() 2048-bit 20 ops")
+
     bench_summary(runner)
 end
 

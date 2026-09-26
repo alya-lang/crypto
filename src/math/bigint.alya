@@ -1,0 +1,382 @@
+## # Multi-Precision Integer Arithmetic (16-bit limbs)
+##
+## Unsigned big integers as little-endian 16-bit limb arrays. Carries stay
+## inside 64-bit signed range (max accumulation 128 * 65535^2 < 2^63), so
+## every intermediate is exact. Powers RSA verification and key exchange.
+
+## Trims leading zero limbs (keeps at least one).
+##
+## # Arguments
+## * `a` - Limb array.
+##
+## # Returns
+## Normalized limb array.
+pub function bi_trim(a) -> array
+    let n = len(a)
+    while n > 1 and a[n - 1] == 0
+        n -= 1
+    end
+    let out = []
+    let i = 0
+    while i < n
+        out.push(a[i])
+        i += 1
+    end
+    return out
+end
+
+## Compares two big integers.
+##
+## # Arguments
+## * `a` - First operand.
+## * `b` - Second operand.
+##
+## # Returns
+## -1 when `a < b`, 0 when equal, 1 when `a > b`.
+pub function bi_cmp(a, b) -> int
+    let x = bi_trim(a)
+    let y = bi_trim(b)
+    if len(x) < len(y)
+        return -1
+    end
+    if len(x) > len(y)
+        return 1
+    end
+    let i = len(x) - 1
+    while i >= 0
+        if x[i] < y[i]
+            return -1
+        end
+        if x[i] > y[i]
+            return 1
+        end
+        i -= 1
+    end
+    return 0
+end
+
+## Returns 1 when the value is zero.
+##
+## # Arguments
+## * `a` - Operand.
+##
+## # Returns
+## `1` for zero, `0` otherwise.
+pub function bi_is_zero(a) -> int
+    let i = 0
+    while i < len(a)
+        if a[i] != 0
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+## Adds two big integers.
+##
+## # Arguments
+## * `a` - First operand.
+## * `b` - Second operand.
+##
+## # Returns
+## Sum limb array.
+pub function bi_add(a, b) -> array
+    let n = len(a)
+    if len(b) > n
+        n = len(b)
+    end
+    let out = []
+    let carry = 0
+    let i = 0
+    while i < n
+        let av = 0
+        if i < len(a)
+            av = a[i]
+        end
+        let bv = 0
+        if i < len(b)
+            bv = b[i]
+        end
+        let s = av + bv + carry
+        out.push(bit_and(s, 65535))
+        carry = bit_shr(s, 16)
+        i += 1
+    end
+    if carry != 0
+        out.push(carry)
+    end
+    return out
+end
+
+## Subtracts `b` from `a` (`a` must be greater or equal).
+##
+## # Arguments
+## * `a` - Minuend.
+## * `b` - Subtrahend.
+##
+## # Returns
+## Difference limb array.
+pub function bi_sub(a, b) -> array
+    let out = []
+    let borrow = 0
+    let i = 0
+    while i < len(a)
+        let bv = 0
+        if i < len(b)
+            bv = b[i]
+        end
+        let d = a[i] - bv - borrow
+        if d < 0
+            d += 65536
+            borrow = 1
+        else
+            borrow = 0
+        end
+        out.push(d)
+        i += 1
+    end
+    return bi_trim(out)
+end
+
+## Multiplies two big integers (schoolbook, 16-bit limbs).
+##
+## # Arguments
+## * `a` - First operand.
+## * `b` - Second operand.
+##
+## # Returns
+## Product limb array.
+pub function bi_mul(a, b) -> array
+    if bi_is_zero(a) == 1 or bi_is_zero(b) == 1
+        return [0]
+    end
+    let n = len(a) + len(b) + 1
+    let out = []
+    let i = 0
+    while i < n
+        out.push(0)
+        i += 1
+    end
+    i = 0
+    while i < len(a)
+        let carry = 0
+        let j = 0
+        while j < len(b)
+            let cur = out[i + j] + a[i] * b[j] + carry
+            out[i + j] = bit_and(cur, 65535)
+            carry = bit_shr(cur, 16)
+            j += 1
+        end
+        let k = i + len(b)
+        let total = out[k] + carry
+        out[k] = bit_and(total, 65535)
+        carry = bit_shr(total, 16)
+        k += 1
+        while carry != 0
+            total = out[k] + carry
+            out[k] = bit_and(total, 65535)
+            carry = bit_shr(total, 16)
+            k += 1
+        end
+        i += 1
+    end
+    return bi_trim(out)
+end
+
+## Left-shifts by whole limbs and optional bits (0..15).
+##
+## # Arguments
+## * `a` - Operand.
+## * `limb_shift` - Whole-limb shift.
+## * `bit_shift` - Extra bit shift (0..15).
+##
+## # Returns
+## Shifted limb array.
+pub function bi_shl(a, limb_shift: int, bit_shift: int) -> array
+    let out = []
+    let i = 0
+    while i < limb_shift
+        out.push(0)
+        i += 1
+    end
+    let carry = 0
+    i = 0
+    while i < len(a)
+        let cur = bit_shl(a[i], bit_shift) + carry
+        out.push(bit_and(cur, 65535))
+        carry = bit_shr(cur, 16)
+        i += 1
+    end
+    if carry != 0
+        out.push(carry)
+    end
+    return out
+end
+
+## Computes quotient and remainder by binary long division.
+##
+## # Arguments
+## * `a` - Dividend.
+## * `b` - Non-zero divisor.
+##
+## # Returns
+## Array `[quotient, remainder]`.
+pub function bi_divmod(a, b) -> array
+    if bi_is_zero(b) == 1
+        throw "bigint division by zero"
+    end
+    if bi_cmp(a, b) < 0
+        return [[0], bi_trim(a)]
+    end
+    let shift = 0
+    let top = b
+    while bi_cmp(top, a) <= 0
+        top = bi_shl(top, 0, 1)
+        shift += 1
+    end
+    let q = [0]
+    let r = bi_trim(a)
+    while shift > 0
+        shift -= 1
+        top = bi_shr_limbs(top, 1)
+        q = bi_shl(q, 0, 1)
+        if bi_cmp(r, top) >= 0
+            r = bi_sub(r, top)
+            q = bi_add(q, [1])
+        end
+    end
+    return [bi_trim(q), bi_trim(r)]
+end
+
+## Right-shifts by 1..15 bits across limbs.
+##
+## # Arguments
+## * `a` - Operand.
+## * `bit_shift` - Bit shift (1..15).
+##
+## # Returns
+## Shifted limb array.
+pub function bi_shr_limbs(a, bit_shift: int) -> array
+    if bit_shift <= 0
+        return bi_trim(a)
+    end
+    let mask = bit_shl(1, bit_shift) - 1
+    let out = []
+    let i = 0
+    while i < len(a)
+        out.push(0)
+        i += 1
+    end
+    let carry = 0
+    i = len(a) - 1
+    while i >= 0
+        let new_carry = bit_and(a[i], mask)
+        out[i] = bit_or(bit_shr(a[i], bit_shift), bit_shl(carry, 16 - bit_shift))
+        carry = new_carry
+        i -= 1
+    end
+    return bi_trim(out)
+end
+
+## Computes `a mod m`.
+##
+## # Arguments
+## * `a` - Dividend.
+## * `m` - Modulus.
+##
+## # Returns
+## Remainder limb array.
+pub function bi_mod(a, m) -> array
+    return bi_divmod(a, m)[1]
+end
+
+## Modular exponentiation by square-and-multiply.
+##
+## # Arguments
+## * `base` - Base limbs.
+## * `exp` - Exponent as non-negative int (fits 64-bit).
+## * `modulo` - Modulus limbs.
+##
+## # Returns
+## `base^exp mod modulo` limb array.
+pub function bi_modexp_int(base, exp: int, modulo) -> array
+    if exp < 0
+        throw "negative exponent not supported"
+    end
+    let result = bi_mod([1], modulo)
+    let b = bi_mod(base, modulo)
+    let e = exp
+    while e > 0
+        if bit_and(e, 1) != 0
+            result = bi_mod(bi_mul(result, b), modulo)
+        end
+        e = bit_shr(e, 1)
+        if e > 0
+            b = bi_mod(bi_mul(b, b), modulo)
+        end
+    end
+    return result
+end
+
+## Converts big-endian bytes to limbs.
+##
+## # Arguments
+## * `bytes` - Big-endian byte array.
+##
+## # Returns
+## Little-endian 16-bit limb array.
+pub function bi_from_bytes(bytes) -> array
+    let out = []
+    let i = len(bytes) - 1
+    let acc = 0
+    let bits = 0
+    while i >= 0
+        acc = bit_or(acc, bit_shl(bit_and(bytes[i], 255), bits))
+        bits += 8
+        if bits == 16
+            out.push(acc)
+            acc = 0
+            bits = 0
+        end
+        i -= 1
+    end
+    if bits > 0
+        out.push(acc)
+    end
+    return bi_trim(out)
+end
+
+## Converts limbs to big-endian bytes of exact length.
+##
+## # Arguments
+## * `a` - Limb array.
+## * `out_len` - Exact output byte length.
+##
+## # Returns
+## Big-endian byte array left-padded with zeros.
+pub function bi_to_bytes(a, out_len: int) -> array
+    let le = []
+    let i = 0
+    while i < out_len
+        le.push(0)
+        i += 1
+    end
+    let pos = 0
+    i = 0
+    while i < len(a) and pos < out_len
+        le[pos] = bit_and(a[i], 255)
+        if pos + 1 < out_len
+            le[pos + 1] = bit_and(bit_shr(a[i], 8), 255)
+        end
+        pos += 2
+        i += 1
+    end
+    let out = []
+    i = out_len - 1
+    while i >= 0
+        out.push(le[i])
+        i -= 1
+    end
+    return out
+end

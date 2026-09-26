@@ -1,0 +1,457 @@
+## # X25519 Elliptic-Curve Diffie-Hellman (RFC 7748)
+##
+## Curve25519 Montgomery ladder with 16-bit limbs. Field reduction folds
+## 2^256 as 38 (2 * 19) modulo p = 2^255 - 19.
+
+## Reduces a 32-limb product modulo p into 16 normalized limbs.
+##
+## Schoolbook products hold magnitudes below 2^41 per limb. One fold plus
+## six carry passes provably converge (each pass shrinks the overflow
+## geometrically); the exact value is preserved throughout.
+##
+## # Arguments
+## * `t` - 32-limb intermediate array.
+##
+## # Returns
+## 16-limb reduced array below 2p.
+pub function _f25519_reduce(t) -> array
+    let v = []
+    let i = 0
+    while i < 32
+        if i < len(t)
+            v.push(t[i])
+        else
+            v.push(0)
+        end
+        i += 1
+    end
+    i = 0
+    while i < 31
+        let carry = bit_shr(v[i], 16)
+        v[i] = bit_and(v[i], 65535)
+        v[i + 1] = v[i + 1] + carry
+        i += 1
+    end
+    i = 16
+    while i < 32
+        v[i - 16] = v[i - 16] + 38 * v[i]
+        v[i] = 0
+        i += 1
+    end
+    let pass = 0
+    while pass < 6
+        i = 0
+        while i < 16
+            let carry = bit_shr(v[i], 16)
+            v[i] = bit_and(v[i], 65535)
+            if i + 1 < 16
+                v[i + 1] = v[i + 1] + carry
+            else
+                v[0] = v[0] + 38 * carry
+            end
+            i += 1
+        end
+        pass += 1
+    end
+    let out = []
+    i = 0
+    while i < 16
+        out.push(v[i])
+        i += 1
+    end
+    return out
+end
+
+## Multiplies two field elements.
+##
+## # Arguments
+## * `a` - 16-limb factor.
+## * `b` - 16-limb factor.
+##
+## # Returns
+## 16-limb product mod p.
+pub function _f25519_mul(a, b) -> array
+    let t = []
+    let i = 0
+    while i < 32
+        t.push(0)
+        i += 1
+    end
+    i = 0
+    while i < 16
+        let carry = 0
+        let j = 0
+        while j < 16
+            let cur = t[i + j] + a[i] * b[j] + carry
+            t[i + j] = bit_and(cur, 65535)
+            carry = bit_shr(cur, 16)
+            j += 1
+        end
+        t[i + 16] = t[i + 16] + carry
+        i += 1
+    end
+    return _f25519_reduce(t)
+end
+
+## Squares a field element.
+##
+## # Arguments
+## * `a` - 16-limb factor.
+##
+## # Returns
+## 16-limb square mod p.
+pub function _f25519_sq(a) -> array
+    return _f25519_mul(a, a)
+end
+
+## Adds two field elements.
+##
+## Fully reduces through the shared reducer so every ladder value stays
+## below 2^256 (subtraction relies on bounded inputs).
+##
+## # Arguments
+## * `a` - 16-limb summand.
+## * `b` - 16-limb summand.
+##
+## # Returns
+## 16-limb sum mod p.
+pub function _f25519_add(a, b) -> array
+    let t = []
+    let i = 0
+    while i < 32
+        if i < 16
+            t.push(a[i] + b[i])
+        else
+            t.push(0)
+        end
+        i += 1
+    end
+    return _f25519_reduce(t)
+end
+
+## Carry-propagates limbs into 16-bit range (value-preserving).
+##
+## The top carry folds back times 38 (2^256 === 38) instead of dropping,
+## so inputs slightly above 2^256 stay exact.
+##
+## # Arguments
+## * `a` - 16-limb array with bounded magnitudes.
+##
+## # Returns
+## Normalized 16-limb array below 2^256.
+pub function _f25519_carry(a) -> array
+    let v = []
+    let i = 0
+    while i < 16
+        v.push(a[i])
+        i += 1
+    end
+    let pass = 0
+    while pass < 2
+        i = 0
+        while i < 16
+            let carry = bit_shr(v[i], 16)
+            v[i] = bit_and(v[i], 65535)
+            if i + 1 < 16
+                v[i + 1] = v[i + 1] + carry
+            else
+                v[0] = v[0] + 38 * carry
+            end
+            i += 1
+        end
+        pass += 1
+    end
+    return v
+end
+
+## Subtracts field elements with branch-free fixup.
+##
+## Computes `a - b` with borrow; when `a < b`, adds p back through a
+## masked select (no data-dependent branch). Inputs must be below 2^256;
+## the result is fully reduced below p.
+##
+## # Arguments
+## * `a` - 16-limb minuend.
+## * `b` - 16-limb subtrahend.
+##
+## # Returns
+## 16-limb difference in `[0, p)`.
+pub function _f25519_sub(a, b) -> array
+    let x = _f25519_norm(a)
+    let y = _f25519_norm(b)
+    let diff = []
+    let borrow = 0
+    let i = 0
+    while i < 16
+        let d = x[i] - y[i] - borrow
+        if d < 0
+            d += 65536
+            borrow = 1
+        else
+            borrow = 0
+        end
+        diff.push(d)
+        i += 1
+    end
+    let p = [65517, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
+    let fixed = []
+    let carry = 0
+    i = 0
+    while i < 16
+        let s = diff[i] + p[i] + carry
+        fixed.push(bit_and(s, 65535))
+        carry = bit_shr(s, 16)
+        i += 1
+    end
+    let mask = 0 - borrow
+    if mask == 0
+        return diff
+    end
+    return fixed
+end
+
+## Fully normalizes limbs (carry + bounded conditional subtracts).
+##
+## The subtract loop runs until the value drops below p (at most a few
+## passes for our bounded magnitudes), so outputs are canonical in
+## `[0, p)` regardless of input excess.
+##
+## # Arguments
+## * `a` - 16-limb array with bounded magnitudes.
+##
+## # Returns
+## Canonical 16-limb array.
+pub function _f25519_norm(a) -> array
+    let v = []
+    let i = 0
+    while i < 16
+        v.push(a[i])
+        i += 1
+    end
+    i = 0
+    while i < 15
+        let carry = bit_shr(v[i], 16)
+        v[i] = bit_and(v[i], 65535)
+        v[i + 1] = v[i + 1] + carry
+        i += 1
+    end
+    let carry = bit_shr(v[15], 16)
+    v[15] = bit_and(v[15], 65535)
+    v[0] = v[0] + 38 * carry
+    let c = bit_shr(v[0], 16)
+    v[0] = bit_and(v[0], 65535)
+    v[1] = v[1] + c
+    let round = 0
+    while round < 8
+        if _f25519_ge_p(v) == 0
+            break
+        end
+        v = _f25519_sub_p(v)
+        round += 1
+    end
+    return v
+end
+
+## Returns 1 when limbs hold a value at or above p.
+##
+## Requires 16-bit normalized limbs for exact comparison.
+##
+## # Arguments
+## * `v` - 16-limb array.
+##
+## # Returns
+## `1` when `v >= p`, `0` otherwise.
+pub function _f25519_ge_p(v) -> int
+    let p = [65517, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
+    let i = 15
+    while i >= 0
+        if v[i] < p[i]
+            return 0
+        end
+        if v[i] > p[i]
+            return 1
+        end
+        i -= 1
+    end
+    return 1
+end
+
+## Subtracts p once from normalized limbs.
+##
+## # Arguments
+## * `v` - 16-limb array at or above p.
+##
+## # Returns
+## 16-limb difference array.
+pub function _f25519_sub_p(v)
+    let p = [65517, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
+    let out = []
+    let borrow = 0
+    let i = 0
+    while i < 16
+        let d = v[i] - p[i] - borrow
+        if d < 0
+            d += 65536
+            borrow = 1
+        else
+            borrow = 0
+        end
+        out.push(d)
+        i += 1
+    end
+    return out
+end
+
+## Converts 32 little-endian bytes to limbs.
+##
+## # Arguments
+## * `bytes` - 32-byte array.
+##
+## # Returns
+## 16-limb array.
+pub function _f25519_from_bytes(bytes) -> array
+    let out = []
+    let i = 0
+    while i < 16
+        out.push(bytes[2 * i] + bit_shl(bytes[2 * i + 1], 8))
+        i += 1
+    end
+    return out
+end
+
+## Converts limbs to 32 little-endian bytes.
+##
+## # Arguments
+## * `a` - 16-limb array.
+##
+## # Returns
+## 32-byte array.
+pub function _f25519_to_bytes(a) -> array
+    let v = _f25519_norm(a)
+    let out = []
+    let i = 0
+    while i < 16
+        out.push(bit_and(v[i], 255))
+        out.push(bit_and(bit_shr(v[i], 8), 255))
+        i += 1
+    end
+    return out
+end
+
+## Constant-time conditional swap of two limb arrays.
+##
+## # Arguments
+## * `a` - First array (mutated in place).
+## * `b` - Second array (mutated in place).
+## * `swap` - `1` to swap, `0` to keep.
+pub function _f25519_cswap(a, b, swap: int)
+    let mask = 0
+    if swap == 1
+        mask = 65535
+    end
+    let i = 0
+    while i < 16
+        let t = bit_and(bit_xor(a[i], b[i]), mask)
+        a[i] = bit_xor(a[i], t)
+        b[i] = bit_xor(b[i], t)
+        i += 1
+    end
+end
+
+## Clamps a 32-byte scalar per RFC 7748.
+##
+## # Arguments
+## * `s` - 32-byte scalar array (mutated in place).
+pub function x25519_clamp(s)
+    s[0] = bit_and(s[0], 248)
+    s[31] = bit_and(s[31], 127)
+    s[31] = bit_or(s[31], 64)
+end
+
+## Computes the X25519 function `scalar * point`.
+##
+## # Arguments
+## * `scalar_bytes` - 32-byte scalar (clamped internally).
+## * `point_bytes` - 32-byte u-coordinate.
+##
+## # Returns
+## 32-byte result u-coordinate.
+pub function x25519(scalar_bytes, point_bytes) -> array
+    let s = []
+    let i = 0
+    while i < 32
+        s.push(scalar_bytes[i])
+        i += 1
+    end
+    x25519_clamp(s)
+    let x1 = _f25519_from_bytes(point_bytes)
+    let x2 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let z2 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let x3 = _f25519_from_bytes(point_bytes)
+    let z3 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let swap = 0
+    let pos = 254
+    while pos >= 0
+        let bit = bit_and(bit_shr(s[bit_shr(pos, 3)], bit_and(pos, 7)), 1)
+        swap = bit_xor(swap, bit)
+        _f25519_cswap(x2, x3, swap)
+        _f25519_cswap(z2, z3, swap)
+        swap = bit
+        let a = _f25519_add(x2, z2)
+        let aa = _f25519_sq(a)
+        let b = _f25519_sub(x2, z2)
+        let bb = _f25519_sq(b)
+        let e = _f25519_sub(aa, bb)
+        let c = _f25519_add(x3, z3)
+        let d = _f25519_sub(x3, z3)
+        let da = _f25519_mul(d, a)
+        let cb = _f25519_mul(c, b)
+        x3 = _f25519_sq(_f25519_add(da, cb))
+        z3 = _f25519_mul(x1, _f25519_sq(_f25519_sub(da, cb)))
+        x2 = _f25519_mul(aa, bb)
+        z2 = _f25519_mul(e, _f25519_add(aa, _f25519_mul(_f25519_const_121666(), e)))
+        pos -= 1
+    end
+    _f25519_cswap(x2, x3, swap)
+    _f25519_cswap(z2, z3, swap)
+    let out = _f25519_mul(x2, _f25519_pow_pminus2(z2))
+    return _f25519_to_bytes(out)
+end
+
+## Returns the constant 121665 (curve parameter `(486662-2)/4`).
+##
+## # Returns
+## 16-limb constant array.
+pub function _f25519_const_121666() -> array
+    return [56129, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+end
+
+## Raises to p-2 by square-and-multiply (Fermat inverse core).
+##
+## Exponent p - 2 = 2^255 - 21, i.e. limbs `[65515, 65535 (x14), 32767]`.
+##
+## # Arguments
+## * `z` - Nonzero field element.
+##
+## # Returns
+## Modular inverse `z^(p-2)`.
+pub function _f25519_pow_pminus2(z)
+    let exp = [65515, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
+    let result = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let base = z
+    let limb = 0
+    while limb < 16
+        let mask = 1
+        let b = 0
+        while b < 16
+            if bit_and(exp[limb], mask) != 0
+                result = _f25519_mul(result, base)
+            end
+            base = _f25519_sq(base)
+            mask = bit_shl(mask, 1)
+            b += 1
+        end
+        limb += 1
+    end
+    return result
+end

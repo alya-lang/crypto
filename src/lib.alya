@@ -28,6 +28,9 @@ import "./ciphers/chacha20.alya"
 import "./ciphers/chacha20poly1305.alya"
 import "./ciphers/aes.alya"
 import "./ciphers/aesgcm.alya"
+import "./math/bigint.alya"
+import "./sign/rsa.alya"
+import "./kex/x25519.alya"
 import "./random/entropy.alya"
 
 ## Computes a cryptographic hash of a text string using the specified algorithm.

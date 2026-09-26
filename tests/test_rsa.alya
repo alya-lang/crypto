@@ -1,0 +1,51 @@
+# RSA PKCS#1 v1.5 verification tests (openssl-generated vectors)
+import "std/test"
+import "../src/lib.alya" as crypto
+
+function self_cert_pem() -> string
+    return "-----BEGIN CERTIFICATE-----\nMIIDBzCCAe+gAwIBAgIUQ7ecxjmpxckGMsLGvgW1t5765m8wDQYJKoZIhvcNAQEL\nBQAwEzERMA8GA1UEAwwIcnNhLXRlc3QwHhcNMjYwOTI2MjEzMTUzWhcNMjYwOTI4\nMjEzMTUzWjATMREwDwYDVQQDDAhyc2EtdGVzdDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALjH9MkLjoHOP+4nmwa8gvs7icbZuEjXPaXmcTuTTbQJJgne\nwhBIaJx4ZO3BR7htcLJX3PDt6gjXup6Wdyvg3WcGT63rzShhhZt6DQKWm+AV99mu\nkbU5nJlIJhuLb7Nr/jzwZWMP8aMlepozXd+LQofB883QLIagoJu3uitymGKSAaZy\n8ZtNwNa5RT8SjNhRjovaRgeBorJ4i0gmuffvFJhEbba01JhfeZYbjVTPvRCQLvwm\nyMWMqH1kJMgz5CRimEqIPJoFG+bvnZ9EONNiQA2XSN7hPw12/qfE7rd2R2PUNMlv\n/HEb2tbZAww3rH8Zrb6hY41rPoHXd0rTJn+vyLUCAwEAAaNTMFEwHQYDVR0OBBYE\nFFkiT+uxLh8xa+SZ1YIKwGFjvBbtMB8GA1UdIwQYMBaAFFkiT+uxLh8xa+SZ1YIK\nwGFjvBbtMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAJ4fmpPT\nB0/R8tgW9nO8pCM6bg9ylVFDxLlFrkt/KXBU0VugkevIKxK6LL0vqU4Hz1nOmUHD\nc3uxRLIix+OpwWoRyFwE+HWGYTT5NSEtF6E250xI+lB2C3QHA2YfHHFGF4SU9ehV\ngtXKLMJW/zsMrUX0cDYzBZAWfodorTJdRFzTmRK4JHy5qyuTrnb8P5RUfpiAYro3\nsUz2s1cTlGqcAltAXnrjwf2VHjSmKnS0R9KE0YkEqozfNTlDjKLz2ud2jJEg9OK1\neYxnO/QkYvjZKvHlRHpJeoTfkbL9yOhotmI+jyMvxtRmnPe6Lo1uH7S0WQOzET4M\nl9d5dUM607Rg/KQ=\n-----END CERTIFICATE-----\n"
+end
+
+function ca_cert_pem() -> string
+    return "-----BEGIN CERTIFICATE-----\nMIIDCTCCAfGgAwIBAgIUHrtnC3L6K2jbkjSpkXt/c7jrdVIwDQYJKoZIhvcNAQEL\nBQAwFDESMBAGA1UEAwwJdGVzdC1yb290MB4XDTI2MDkyNjIxMzQwNFoXDTI2MDky\nOTIxMzQwNFowFDESMBAGA1UEAwwJdGVzdC1yb290MIIBIjANBgkqhkiG9w0BAQEF\nAAOCAQ8AMIIBCgKCAQEArxa+QzNPWff9JLthgVdJ8JpR5FjUssxemKe8xPTROgAy\nPHW5gbnnDRWwukU0aEImug7auAom+b+cCs6kWqAdloGZ+eUy8cy7+tbL9RC3lqe/\n586vQEkKxQKNfnNEZzZe932sZbAxuwg4/0JVXYAPHugqKEmX6aMgi00GBHA+52Jt\nHmYbWqE9bEy6EwOYkMWkLtNyFL9654ZOkxw1R1LauJeJhaQ6HdspIvY9d5jY9fjk\nVKX1uTq9oJ7c4acQ8FOPcSnIc6htE/tLlAUhoa+Tk1zCFtS8Fk0ZnqudHb7StPla\nrZ6CpZMRpM1NlLRpRpG2G34cAXo8AUnvMr7F3wusYQIDAQABo1MwUTAdBgNVHQ4E\nFgQUgg9+P+d3t0bL0YBgBEnSJtNeheYwHwYDVR0jBBgwFoAUgg9+P+d3t0bL0YBg\nBEnSJtNeheYwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEADRrj\nsKM8W7fBO2wmO5jwtn9U0MoVUAz1M0lrt5vnVkLzWnPbRn+du5VUgyCikW4n1nZA\n6xfypw0bvd5OysEnd9rFGCzstjYHXTzRDJjgw1IMDNPw9q1IwNEMhHBxzNX0uQ+M\nym1kEv/LEY2W1iIYTxVJOoEGBiUJpOlBciBaOjMskJFCZ4E3oiPmGzo3g9ZumcfN\nh+sdQGKvhq/germVm7x2cCGewF5QTlRjth2SPlV1ylYcOcbMIsePidV6l2+y0FXi\nA1sh1HGROg5c7jj02sxYBc/FRHIVwkyUegdZ0rsXbNqNcjGUYBtqslTCXcUDUIzr\nUzoZ9fgbLKPEyzw6GQ==\n-----END CERTIFICATE-----\n"
+end
+
+function leaf_cert_pem() -> string
+    return "-----BEGIN CERTIFICATE-----\nMIIDFDCCAfygAwIBAgIUbpcF/6wifnCjm5xm0Gji4/3tx5UwDQYJKoZIhvcNAQEL\nBQAwFDESMBAGA1UEAwwJdGVzdC1yb290MB4XDTI2MDkyNjIxMzQwNFoXDTI2MDky\nODIxMzQwNFowFzEVMBMGA1UEAwwMbGVhZi5leGFtcGxlMIIBIjANBgkqhkiG9w0B\nAQEFAAOCAQ8AMIIBCgKCAQEArrjVQYm14uuYCV096pRtV7FQZGbnAGhGoUx7tRpR\niyW/i5ZK0Ib1mx244O/Z7x93k6GYpRyeThtck1Kpr4ObSthO451yDR+eTE7BbVsF\nlBYqDsE+pI9nhqAc5owrIYjz5NtdFLHYnMJ+bAXrTZ68agrqaKyBJ+m2FgEhNlGm\nv0B4J0v/4XRkxImoQrkAbWE8hzbNU0n+VgoYY/6hKiq+50M2/cMffkDoPrmLe0Y0\n1dkXuK4Nr2Ld+lPhIcsqgTUvhFo0I3rXgNG6Hla2k9SjM2OL1yFOx3qtqzj8xd8q\nXhHcdfhNEzpju7vZhfm2ejhP+OZcTx9yinZ/IUV61MpEJwIDAQABo1swWTAXBgNV\nHREEEDAOggxsZWFmLmV4YW1wbGUwHQYDVR0OBBYEFAoSNfXundhPl3cnE1+CB1k7\n23jsMB8GA1UdIwQYMBaAFIIPfj/nd7dGy9GAYARJ0ibTXoXmMA0GCSqGSIb3DQEB\nCwUAA4IBAQCUN6sviIXyYpTiPRwZD3eRhAyeyrM3Yeb0GhQZ5Mnl8ngE+HsoIinU\nZCZxVJsuR55riTK851/mYq1idIGOEQIIDMkFsHSx1lJ8/jlhilH+bJvX/ntgOjQy\nnabItq0+rIDXhH9sV4kuyY3WpRskrjghHWZXXQ4CplRmvh5PYgDeQkAWny010kzo\nl/rwyEhJtGPTP3PKxW7Y4/SSEN7sYpgcJxaw+H3JM6vOeTNWrUpRotT0o0HYnu0t\na9Z4R2SNdKAxT0Acl7oHUhz0dsscQzghPW6aihbtTKF+ai7cYdR60XQqkffk68ky\nvq0mJdM+DnQHJ0ER3GXGAAPKrmCOb7uD\n-----END CERTIFICATE-----\n"
+end
+
+function main()
+    test_suite("RSA Tests")
+    let r = runner_new()
+
+    let self_der = crypto::pem_to_der(self_cert_pem(), "CERTIFICATE")
+    runner_assert_eq(r, len(self_der), 779, "self-signed der length")
+    let key = crypto::rsa_parse_pubkey(self_der)
+    runner_assert_str_eq(r, key["error"], "", "pubkey parses")
+    runner_assert_eq(r, len(key["n"]), 256, "modulus 256 bytes")
+    runner_assert_eq(r, key["e"], 65537, "exponent 65537")
+
+    let msg = [115, 105, 103, 110, 45, 109, 101]
+    let sig = crypto::hex_to_bytes("403c81ea3ac1dd1c998d4c6dc5bbebb5f1f09c5d81fde77d27d0ec5609f4ec29554ed93bbb8abec66cfbbf624422210c9e3f708c36be9d5fa801cc8b8576020fe7d3630ea977bff759181dd09f78688043ccc3363ab373cc7c6778f294fdfd5ce8e6ae05ff509f53928a9644742f17a9fb04764a66954739f3745f577d786d5d44e9bce98a1af36e2fac378dd2ba6954117f4abd1956af05e2c2f7ff13cb62f4264a74fc3734d621819955a9a48ae81222dfbede52e4d627f529768cd9e75df5182a879bd5e4a022858414767ec23af58d0cd85cd60a0b3aa5b0c01a2aabe625b7ddff70e69f69c96fcfc6fa43f2cb6ce03ccda999b893cabb00b3df43181bb8")
+    runner_assert_eq(r, crypto::rsa_verify(key["n"], key["e"], "sha256", msg, sig), 1, "openssl message signature verifies")
+    let bad_msg = [115, 105, 103, 110, 45, 109, 102]
+    runner_assert_eq(r, crypto::rsa_verify(key["n"], key["e"], "sha256", bad_msg, sig), 0, "tampered message rejected")
+    runner_assert_eq(r, crypto::rsa_verify_cert(self_der, key["n"], key["e"]), 1, "self-signed cert verifies")
+
+    let ca_der = crypto::pem_to_der(ca_cert_pem(), "CERTIFICATE")
+    let leaf_der = crypto::pem_to_der(leaf_cert_pem(), "CERTIFICATE")
+    let ca_key = crypto::rsa_parse_pubkey(ca_der)
+    runner_assert_str_eq(r, ca_key["error"], "", "ca pubkey parses")
+    runner_assert_eq(r, crypto::rsa_verify_cert(ca_der, ca_key["n"], ca_key["e"]), 1, "ca self-signature verifies")
+    runner_assert_eq(r, crypto::rsa_verify_cert(leaf_der, ca_key["n"], ca_key["e"]), 1, "leaf verifies under ca key")
+    let leaf_key = crypto::rsa_parse_pubkey(leaf_der)
+    runner_assert_eq(r, crypto::rsa_verify_cert(leaf_der, leaf_key["n"], leaf_key["e"]), 0, "leaf self-signature correctly rejected")
+    runner_assert_eq(r, crypto::rsa_verify_cert(leaf_der, key["n"], key["e"]), 0, "wrong issuer key rejected")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

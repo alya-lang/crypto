@@ -1,0 +1,39 @@
+# X25519 tests (Python cross-checked vectors + clamp)
+import "std/test"
+import "../src/lib.alya" as crypto
+
+function main()
+    test_suite("X25519 Tests")
+    let r = runner_new()
+
+    let k1 = crypto::hex_to_bytes("484a7fbaf7ed93e344655d4876ac161b59ad8193d1400fd70db7c0871dfb6553")
+    let p1 = crypto::hex_to_bytes("00d31a6603d3aa9b93d62c3e670171bc81cfbee4d8a299be899e1a220de23246")
+    let k2 = crypto::hex_to_bytes("40cda927d49d8aae5ac34a58e67266f8a51ef1bfa6d50a72c66317a82f960f5c")
+    let p2 = crypto::hex_to_bytes("92cd0068c67b67bec749d80de23c426abeb9a34b9bacfc309237e4cfc62ba154")
+    let ss = "9d5e78fcfb2a0a0b3973726579772067f8d358f664c53f163d4536d0f996e91a"
+
+    let base9 = crypto::hex_to_bytes("0900000000000000000000000000000000000000000000000000000000000000")
+    let q1 = crypto::x25519(k1, base9)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(q1), "00d31a6603d3aa9b93d62c3e670171bc81cfbee4d8a299be899e1a220de23246", "public key from private (x-checked)")
+    let s1 = crypto::x25519(k1, p2)
+    let s2 = crypto::x25519(k2, p1)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(s1), ss, "shared secret alice side (x-checked)")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(s2), ss, "shared secret bob side (x-checked)")
+
+    let raw = []
+    let i = 0
+    while i < 32
+        raw.push(255)
+        i += 1
+    end
+    crypto::x25519_clamp(raw)
+    runner_assert_eq(r, raw[0], 248, "clamp clears low bits")
+    runner_assert_eq(r, raw[31], 127, "clamp sets bit 254, clears 255")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

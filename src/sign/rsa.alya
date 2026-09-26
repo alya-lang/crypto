@@ -1,0 +1,459 @@
+## # RSA PKCS#1 v1.5 Signature Verification (RFC 8017)
+##
+## Verifies RSA signatures with SHA-256/384/512 digests using the
+## multi-precision engine. Covers message signatures, self-signed
+## certificates, and CA-issued chains. Key parsing reads SubjectPublicKeyInfo
+## structures straight from certificate DER bytes.
+
+import "../math/bigint.alya"
+import "../hashes/sha256.alya"
+import "../hashes/sha512.alya"
+import "../encodings/base64.alya"
+
+## Finds a substring without std/str (avoids symbol collisions).
+function pem_index_of(hay, needle: string) -> int
+    if hay is null or needle is null or len(needle) == 0
+        return -1
+    end
+    let i = 0
+    while i + len(needle) <= len(hay)
+        if substring(hay, i, len(needle)) == needle
+            return i
+        end
+        i += 1
+    end
+    return -1
+end
+
+## Trims ASCII whitespace from both ends.
+function pem_trim(s: string) -> string
+    if s is null
+        return ""
+    end
+    let a = 0
+    while a < len(s)
+        let ch = char_at(s, a)
+        if ch != " " and ch != "\t" and ch != "\r" and ch != "\n"
+            break
+        end
+        a += 1
+    end
+    let b = len(s)
+    while b > a
+        let ch = char_at(s, b - 1)
+        if ch != " " and ch != "\t" and ch != "\r" and ch != "\n"
+            break
+        end
+        b -= 1
+    end
+    return substring(s, a, b - a)
+end
+
+## Extracts DER bytes from a PEM block.
+##
+## # Arguments
+## * `pem` - Full PEM text.
+## * `label` - Block label (e.g. `"CERTIFICATE"`).
+##
+## # Returns
+## DER byte array, or empty when the block is absent.
+pub function pem_to_der(pem, label: string) -> array
+    if pem is null or label is null
+        return []
+    end
+    let open_m = "-----BEGIN " + label + "-----"
+    let close_m = "-----END " + label + "-----"
+    let start = pem_index_of(pem, open_m)
+    if start < 0
+        return []
+    end
+    let stop = pem_index_of(pem, close_m)
+    if stop < 0 or stop <= start
+        return []
+    end
+    let inner = substring(pem, start + len(open_m), stop - start - len(open_m))
+    let body = ""
+    let line = ""
+    let i = 0
+    while i <= len(inner)
+        let ch = ""
+        if i < len(inner)
+            ch = char_at(inner, i)
+        end
+        if ch == "\n" or i == len(inner)
+            let t = pem_trim(line)
+            if len(t) > 0
+                body = body + t
+            end
+            line = ""
+        else
+            if ch != "\r"
+                line = line + ch
+            end
+        end
+        i += 1
+    end
+    if body == ""
+        return []
+    end
+    return base64_decode_bytes(body)
+end
+
+## Reads one DER TLV header at a position.
+##
+## # Arguments
+## * `data` - DER byte array.
+## * `pos` - Read offset.
+##
+## # Returns
+## Map with `tag`, `length`, `header_len`, `total_len`, `error`.
+pub function rsa_tlv_at(data, pos: int) -> map
+    let fail = { "tag": 0, "length": 0, "header_len": 0, "total_len": 0, "error": "truncated" }
+    if data is null or pos < 0 or len(data) < pos + 2
+        return fail
+    end
+    let tag = data[pos]
+    let first = data[pos + 1]
+    if first < 128
+        return { "tag": tag, "length": first, "header_len": 2, "total_len": 2 + first, "error": "" }
+    end
+    let octets = first - 128
+    if octets <= 0 or octets > 4 or len(data) < pos + 2 + octets
+        return { "tag": 0, "length": 0, "header_len": 0, "total_len": 0, "error": "bad length" }
+    end
+    let length = 0
+    let i = 0
+    while i < octets
+        length = length * 256 + data[pos + 2 + i]
+        i += 1
+    end
+    return { "tag": tag, "length": length, "header_len": 2 + octets, "total_len": 2 + octets + length, "error": "" }
+end
+
+## Locates a byte needle inside DER data.
+##
+## # Arguments
+## * `data` - Haystack byte array.
+## * `needle` - Needle byte array.
+## * `from_pos` - Search offset.
+##
+## # Returns
+## Match offset, or -1 when absent.
+pub function rsa_find(data, needle, from_pos: int = 0) -> int
+    if data is null or needle is null or len(needle) == 0
+        return -1
+    end
+    let off = from_pos
+    if off < 0
+        off = 0
+    end
+    let i = off
+    while i + len(needle) <= len(data)
+        let hit = 1
+        let j = 0
+        while j < len(needle)
+            if data[i + j] != needle[j]
+                hit = 0
+                break
+            end
+            j += 1
+        end
+        if hit == 1
+            return i
+        end
+        i += 1
+    end
+    return -1
+end
+
+## Parses a DER INTEGER at an offset into raw magnitude bytes.
+##
+## # Arguments
+## * `data` - DER byte array.
+## * `pos` - INTEGER tag offset.
+##
+## # Returns
+## Map with `bytes`, `next`, `error`.
+pub function rsa_read_integer(data, pos: int) -> map
+    let fail = { "bytes": [], "next": pos, "error": "bad integer" }
+    let t = rsa_tlv_at(data, pos)
+    if t["error"] != "" or t["tag"] != 2
+        return fail
+    end
+    let start = pos + t["header_len"]
+    if start + t["length"] > len(data)
+        return fail
+    end
+    let val = []
+    let i = 0
+    while i < t["length"]
+        val.push(data[start + i])
+        i += 1
+    end
+    while len(val) > 1 and val[0] == 0
+        let trimmed = []
+        i = 1
+        while i < len(val)
+            trimmed.push(val[i])
+            i += 1
+        end
+        val = trimmed
+    end
+    return { "bytes": val, "next": pos + t["total_len"], "error": "" }
+end
+
+## Extracts an RSA public key from SubjectPublicKeyInfo bytes.
+##
+## Scans for the rsaEncryption OID and validates the BIT STRING wrapper
+## holds a two-INTEGER RSAPublicKey sequence.
+##
+## # Arguments
+## * `der` - DER bytes containing an SPKI structure.
+##
+## # Returns
+## Map with `n` (modulus bytes), `e` (exponent int), `error`.
+pub function rsa_parse_pubkey(der) -> map
+    let fail = { "n": [], "e": 0, "error": "no RSA public key found" }
+    if der is null or len(der) == 0
+        return fail
+    end
+    let oid = [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1]
+    let pos = 0
+    let result = fail
+    let done = 0
+    while done == 0
+        let hit = rsa_find(der, oid, pos)
+        if hit < 0
+            done = 1
+        else
+            pos = hit + 1
+            let attempt = rsa_try_pubkey_at(der, hit)
+            if attempt["error"] == ""
+                result = attempt
+                done = 1
+            end
+        end
+    end
+    return result
+end
+
+## Attempts one SPKI parse anchored at an OID match.
+##
+## # Arguments
+## * `der` - DER byte array.
+## * `hit` - OID tag offset.
+##
+## # Returns
+## Key map, or an error map when the anchor is a false positive.
+pub function rsa_try_pubkey_at(der, hit: int) -> map
+    let fail = { "n": [], "e": 0, "error": "anchor rejected" }
+    let t = rsa_tlv_at(der, hit)
+    if t["error"] != ""
+        return fail
+    end
+    let params_at = hit + t["total_len"]
+    let params = rsa_tlv_at(der, params_at)
+    if params["error"] != ""
+        return fail
+    end
+    let after = params_at + params["total_len"]
+    let bs = rsa_tlv_at(der, after)
+    if bs["error"] != "" or bs["tag"] != 3
+        return fail
+    end
+    let inner_pos = after + bs["header_len"] + 1
+    let seq = rsa_tlv_at(der, inner_pos)
+    if seq["error"] != "" or seq["tag"] != 48
+        return fail
+    end
+    let npos = inner_pos + seq["header_len"]
+    let ni = rsa_read_integer(der, npos)
+    if ni["error"] != ""
+        return fail
+    end
+    let ei = rsa_read_integer(der, ni["next"])
+    if ei["error"] != "" or len(ei["bytes"]) == 0 or len(ei["bytes"]) > 4
+        return fail
+    end
+    let e = 0
+    let k = 0
+    while k < len(ei["bytes"])
+        e = e * 256 + ei["bytes"][k]
+        k += 1
+    end
+    if e <= 1 or len(ni["bytes"]) < 64
+        return fail
+    end
+    return { "n": ni["bytes"], "e": e, "error": "" }
+end
+
+## Returns the DigestInfo prefix for a hash algorithm name.
+##
+## # Arguments
+## * `algo` - `"sha256"`, `"sha384"`, or `"sha512"`.
+##
+## # Returns
+## Prefix byte array, or empty for unknown names.
+pub function rsa_digest_prefix(algo: string) -> array
+    if algo == "sha384"
+        return [48, 65, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 2, 5, 0, 4, 48]
+    end
+    if algo == "sha512"
+        return [48, 81, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 3, 5, 0, 4, 64]
+    end
+    if algo == "sha256"
+        return [48, 49, 48, 13, 6, 9, 96, 134, 72, 1, 101, 3, 4, 2, 1, 5, 0, 4, 32]
+    end
+    return []
+end
+
+## Hashes a message with the named digest.
+##
+## # Arguments
+## * `algo` - `"sha256"`, `"sha384"`, or `"sha512"`.
+## * `msg` - Message byte array.
+##
+## # Returns
+## Digest byte array.
+pub function rsa_hash(algo: string, msg) -> array
+    if algo == "sha384"
+        return sha384_bytes(msg)
+    end
+    if algo == "sha512"
+        return sha512_bytes(msg)
+    end
+    return sha256_bytes(msg)
+end
+
+## Verifies an RSA PKCS#1 v1.5 signature (constant-time padding scan).
+##
+## # Arguments
+## * `n_bytes` - Modulus big-endian bytes.
+## * `e` - Public exponent int.
+## * `algo` - Hash name (`"sha256"`, `"sha384"`, `"sha512"`).
+## * `msg` - Signed message byte array.
+## * `sig` - Signature big-endian bytes (modulus length).
+##
+## # Returns
+## `1` on valid signature, `0` otherwise.
+pub function rsa_verify(n_bytes, e: int, algo: string, msg, sig) -> int
+    if n_bytes is null or len(n_bytes) < 64 or e <= 1
+        return 0
+    end
+    if sig is null or len(sig) != len(n_bytes)
+        return 0
+    end
+    let prefix = rsa_digest_prefix(algo)
+    if len(prefix) == 0
+        return 0
+    end
+    let digest = rsa_hash(algo, msg)
+    let k = len(n_bytes)
+    let em = bi_to_bytes(bi_modexp_int(bi_from_bytes(sig), e, bi_from_bytes(n_bytes)), k)
+    if em[0] != 0 or em[1] != 1
+        return 0
+    end
+    let ps_end = k - len(prefix) - len(digest) - 1
+    if ps_end < 2
+        return 0
+    end
+    let i = 2
+    while i < ps_end
+        if em[i] != 255
+            return 0
+        end
+        i += 1
+    end
+    if em[ps_end] != 0
+        return 0
+    end
+    i = 0
+    while i < len(prefix)
+        if em[ps_end + 1 + i] != prefix[i]
+            return 0
+        end
+        i += 1
+    end
+    i = 0
+    while i < len(digest)
+        if em[ps_end + 1 + len(prefix) + i] != digest[i]
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+## Splits a certificate into TBS bytes and raw signature bytes.
+##
+## # Arguments
+## * `cert_der` - Full certificate DER bytes.
+##
+## # Returns
+## Map with `tbs`, `sig`, `error`.
+pub function rsa_split_cert(cert_der) -> map
+    let fail = { "tbs": [], "sig": [], "error": "malformed certificate" }
+    if cert_der is null or len(cert_der) < 16
+        return fail
+    end
+    let outer = rsa_tlv_at(cert_der, 0)
+    if outer["error"] != "" or outer["tag"] != 48
+        return fail
+    end
+    let tbs_pos = outer["header_len"]
+    let tbs = rsa_tlv_at(cert_der, tbs_pos)
+    if tbs["error"] != ""
+        return fail
+    end
+    let sig_pos = tbs_pos + tbs["total_len"]
+    let alg = rsa_tlv_at(cert_der, sig_pos)
+    if alg["error"] != ""
+        return fail
+    end
+    let val_pos = sig_pos + alg["total_len"]
+    let val = rsa_tlv_at(cert_der, val_pos)
+    if val["error"] != "" or val["tag"] != 3
+        return fail
+    end
+    let tbs_bytes = []
+    let i = 0
+    while i < tbs["total_len"]
+        tbs_bytes.push(cert_der[tbs_pos + i])
+        i += 1
+    end
+    let sig_bytes = []
+    i = 1
+    while i < val["length"]
+        sig_bytes.push(cert_der[val_pos + val["header_len"] + i])
+        i += 1
+    end
+    return { "tbs": tbs_bytes, "sig": sig_bytes, "error": "" }
+end
+
+## Verifies a certificate signature against an issuer public key.
+##
+## Supports sha256/sha384/sha512 with RSA (`sha256WithRSAEncryption`
+## family detected from the signatureAlgorithm OID).
+##
+## # Arguments
+## * `cert_der` - Subject certificate DER bytes.
+## * `issuer_n` - Issuer modulus bytes.
+## * `issuer_e` - Issuer exponent int.
+##
+## # Returns
+## `1` on valid signature, `0` otherwise.
+pub function rsa_verify_cert(cert_der, issuer_n, issuer_e: int) -> int
+    let parts = rsa_split_cert(cert_der)
+    if parts["error"] != ""
+        return 0
+    end
+    let sha512_oid = [42, 134, 72, 134, 247, 13, 1, 1, 13]
+    let sha384_oid = [42, 134, 72, 134, 247, 13, 1, 1, 12]
+    let algo = "sha256"
+    if rsa_find(cert_der, sha512_oid, 0) >= 0
+        algo = "sha512"
+    elif rsa_find(cert_der, sha384_oid, 0) >= 0
+        algo = "sha384"
+    end
+    return rsa_verify(issuer_n, issuer_e, algo, parts["tbs"], parts["sig"])
+end

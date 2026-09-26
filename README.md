@@ -30,13 +30,17 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
   - **AES-GCM** (NIST SP 800-38D): AES-128/256 authenticated encryption, 96-bit nonces, 128-bit tags
   - **ChaCha20** (RFC 8439): 256-bit high-speed stream cipher
   - **RC4**: Classic Rivest Cipher 4 stream cipher
+- 🔏 **Public-Key Primitives**:
+  - **X25519** (RFC 7748): Curve25519 Diffie-Hellman key exchange
+  - **RSA PKCS#1 v1.5** (RFC 8017): SHA-256/384/512 signature verification with multi-precision engine
+- 🧮 **Big Integers**: 16-bit-limb add/sub/mul/divmod/modexp for RSA-scale operands
 - 🌐 **Encodings**:
   - Hex, Base64 (RFC 4648), Base64URL (RFC 7515 / JWT-ready)
   - Base32 (RFC 4648, standard 2FA alphabet)
   - Base58 (Bitcoin alphanumeric alphabet)
 - ⏱️ **Timing Attack Protection**: Constant-time string and byte equality (`constant_time_eq`)
 - 🎲 **Entropy & Randomness**: Cryptographic UUID v4 and random byte generation
-- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (119 passing tests)
+- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (150 passing tests)
 
 ---
 
@@ -74,6 +78,12 @@ crypto/
 │   ├── ciphers/
 │   │   ├── aes.alya        # AES-128 & AES-256 with CBC (PKCS#7) and CTR modes
 │   │   ├── aesgcm.alya     # AES-GCM AEAD, 96-bit nonces, GHASH (NIST SP 800-38D)
+│   ├── math/
+│   │   └── bigint.alya     # Multi-precision add/sub/mul/divmod/modexp
+│   ├── sign/
+│   │   └── rsa.alya        # RSA PKCS#1 v1.5 verify, SPKI/cert DER parsing
+│   ├── kex/
+│   │   └── x25519.alya     # Curve25519 Diffie-Hellman (RFC 7748)
 │   │   ├── chacha20.alya   # ChaCha20 stream cipher (RFC 8439)
 │   │   ├── chacha20poly1305.alya # ChaCha20-Poly1305 AEAD cipher (RFC 8439)
 │   │   └── rc4.alya        # RC4 stream cipher

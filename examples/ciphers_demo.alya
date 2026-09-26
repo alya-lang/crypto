@@ -59,6 +59,17 @@ function main()
     let gcm_pt = crypto::decrypt_aes_gcm(gcm_key, gcm_nonce, "msg-header", gcm_enc["ciphertext"], gcm_enc["tag"])
     say "   GCM Decrypted:  " + gcm_pt
     say ""
+
+    # 6. X25519 Key Exchange Demo (RFC 7748)
+    say "6. X25519 Diffie-Hellman key exchange..."
+    let xa_priv = crypto::random_bytes(32)
+    let xb_priv = crypto::random_bytes(32)
+    let xb_pub = crypto::x25519(xb_priv, crypto::hex_to_bytes("0900000000000000000000000000000000000000000000000000000000000000"))
+    let xa_pub = crypto::x25519(xa_priv, crypto::hex_to_bytes("0900000000000000000000000000000000000000000000000000000000000000"))
+    let xa_ss = crypto::x25519(xa_priv, xb_pub)
+    let xb_ss = crypto::x25519(xb_priv, xa_pub)
+    say "   Shared secrets match: " + str(crypto::bytes_to_hex(xa_ss) == crypto::bytes_to_hex(xb_ss))
+    say ""
     say "✓ Ciphers demo completed successfully!"
 end
 
