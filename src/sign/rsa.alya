@@ -430,6 +430,196 @@ pub function rsa_split_cert(cert_der) -> map
     return { "tbs": tbs_bytes, "sig": sig_bytes, "error": "" }
 end
 
+## Extracts an RSA private key from PKCS#8 DER bytes.
+##
+## Parses `PrivateKeyInfo` (version, rsaEncryption AlgorithmIdentifier,
+## OCTET STRING wrapping RSAPrivateKey) and returns modulus, public
+## exponent, and private exponent for server-side decryption.
+##
+## # Arguments
+## * `der` - PKCS#8 DER byte array.
+##
+## # Returns
+## Map with `n`, `e`, `d`, CRT factors `p`, `q`, `dp`, `dq`, `qinv`
+## (bytes, int, bytes...), `error`.
+pub function rsa_parse_private_key(der) -> map
+    let fail = { "n": [], "e": 0, "d": [], "p": [], "q": [], "dp": [], "dq": [], "qinv": [], "error": "no RSA private key found" }
+    if der is null or len(der) < 32
+        return fail
+    end
+    let outer = rsa_tlv_at(der, 0)
+    if outer["error"] != "" or outer["tag"] != 48
+        return fail
+    end
+    let pos = outer["header_len"]
+    let ver = rsa_tlv_at(der, pos)
+    if ver["error"] != "" or ver["tag"] != 2
+        return fail
+    end
+    pos += ver["total_len"]
+    let alg = rsa_tlv_at(der, pos)
+    if alg["error"] != "" or alg["tag"] != 48
+        return fail
+    end
+    pos += alg["total_len"]
+    let oct = rsa_tlv_at(der, pos)
+    if oct["error"] != "" or oct["tag"] != 4
+        return fail
+    end
+    let inner = oct["header_len"] + pos
+    let seq = rsa_tlv_at(der, inner)
+    if seq["error"] != "" or seq["tag"] != 48
+        return fail
+    end
+    let p = inner + seq["header_len"]
+    let rver = rsa_read_integer(der, p)
+    if rver["error"] != ""
+        return fail
+    end
+    let ni = rsa_read_integer(der, rver["next"])
+    if ni["error"] != "" or len(ni["bytes"]) < 64
+        return fail
+    end
+    let ei = rsa_read_integer(der, ni["next"])
+    if ei["error"] != "" or len(ei["bytes"]) == 0 or len(ei["bytes"]) > 4
+        return fail
+    end
+    let di = rsa_read_integer(der, ei["next"])
+    if di["error"] != "" or len(di["bytes"]) < 64
+        return fail
+    end
+    let pi = rsa_read_integer(der, di["next"])
+    let qi = rsa_read_integer(der, pi["next"])
+    let dpi = rsa_read_integer(der, qi["next"])
+    let dqi = rsa_read_integer(der, dpi["next"])
+    let qinvi = rsa_read_integer(der, dqi["next"])
+    let e = 0
+    let k = 0
+    while k < len(ei["bytes"])
+        e = e * 256 + ei["bytes"][k]
+        k += 1
+    end
+    if e <= 1
+        return fail
+    end
+    if pi["error"] != "" or qi["error"] != "" or dpi["error"] != "" or dqi["error"] != "" or qinvi["error"] != ""
+        return { "n": ni["bytes"], "e": e, "d": di["bytes"], "p": [], "q": [], "dp": [], "dq": [], "qinv": [], "error": "" }
+    end
+    return { "n": ni["bytes"], "e": e, "d": di["bytes"], "p": pi["bytes"], "q": qi["bytes"], "dp": dpi["bytes"], "dq": dqi["bytes"], "qinv": qinvi["bytes"], "error": "" }
+end
+
+## Decrypts with RSA CRT factors ( Garner recombination ).
+##
+## Four times faster than full-size modexp: two half-size powers plus
+## combination `m = m2 + q * (((m1 - m2) * qinv) mod p)`.
+##
+## # Arguments
+## * `c` - Ciphertext limbs.
+## * `p_bytes` - Prime factor bytes.
+## * `q_bytes` - Prime factor bytes.
+## * `dp_bytes` - `d mod (p-1)` bytes.
+## * `dq_bytes` - `d mod (q-1)` bytes.
+## * `qinv_bytes` - `q^-1 mod p` bytes.
+## * `n_bytes` - Modulus bytes (for final reduction safety).
+##
+## # Returns
+## Plaintext integer limbs.
+pub function rsa_decrypt_crt(c, p_bytes, q_bytes, dp_bytes, dq_bytes, qinv_bytes, n_bytes)
+    let p = bi_from_bytes(p_bytes)
+    let q = bi_from_bytes(q_bytes)
+    let m1 = bi_modexp(c, bi_from_bytes(dp_bytes), p)
+    let m2 = bi_modexp(c, bi_from_bytes(dq_bytes), q)
+    let diff = m1
+    if bi_cmp(m1, m2) < 0
+        diff = bi_add(m1, p)
+    end
+    let h = bi_mod(bi_mul(bi_sub(diff, m2), bi_from_bytes(qinv_bytes)), p)
+    return bi_mod(bi_add(m2, bi_mul(h, q)), bi_from_bytes(n_bytes))
+end
+
+## Decrypts PKCS#1 v1.5 type-2 ciphertext with an RSA private key.
+##
+## Validates `00 02 ... 00` padding structure before returning the
+## payload, so malformed inputs fail closed.
+##
+## # Arguments
+## * `n_bytes` - Modulus big-endian bytes.
+## * `d_bytes` - Private exponent big-endian bytes.
+## * `ct` - Ciphertext big-endian bytes (modulus length).
+##
+## # Returns
+## Map with `plaintext` and `error` fields.
+pub function rsa_decrypt_bytes(n_bytes, d_bytes, ct) -> map
+    let fail = { "plaintext": [], "error": "RSA decryption failed" }
+    if n_bytes is null or d_bytes is null or ct is null
+        return fail
+    end
+    if len(ct) != len(n_bytes) or len(n_bytes) < 64
+        return fail
+    end
+    let m = bi_modexp(bi_from_bytes(ct), bi_from_bytes(d_bytes), bi_from_bytes(n_bytes))
+    let em = bi_to_bytes(m, len(n_bytes))
+    if len(em) < 11 or em[0] != 0 or em[1] != 2
+        return fail
+    end
+    let i = 2
+    while i < len(em) and em[i] != 0
+        i += 1
+    end
+    if i < 10 or i >= len(em)
+        return fail
+    end
+    let pt = []
+    i += 1
+    while i < len(em)
+        pt.push(em[i])
+        i += 1
+    end
+    return { "plaintext": pt, "error": "" }
+end
+
+## Decrypts PKCS#1 v1.5 type-2 ciphertext with RSA CRT factors.
+##
+## Same checks as `rsa_decrypt_bytes` at roughly quarter cost.
+##
+## # Arguments
+## * `key` - Parsed private key map from `rsa_parse_private_key`.
+## * `ct` - Ciphertext big-endian bytes (modulus length).
+##
+## # Returns
+## Map with `plaintext` and `error` fields.
+pub function rsa_decrypt_crt_bytes(key, ct) -> map
+    let fail = { "plaintext": [], "error": "RSA decryption failed" }
+    if key is null or ct is null
+        return fail
+    end
+    if len(key["p"]) == 0 or len(key["q"]) == 0 or len(key["dp"]) == 0 or len(key["dq"]) == 0 or len(key["qinv"]) == 0
+        return fail
+    end
+    if len(ct) != len(key["n"])
+        return fail
+    end
+    let m = rsa_decrypt_crt(bi_from_bytes(ct), key["p"], key["q"], key["dp"], key["dq"], key["qinv"], key["n"])
+    let em = bi_to_bytes(m, len(key["n"]))
+    if len(em) < 11 or em[0] != 0 or em[1] != 2
+        return fail
+    end
+    let i = 2
+    while i < len(em) and em[i] != 0
+        i += 1
+    end
+    if i < 10 or i >= len(em)
+        return fail
+    end
+    let pt = []
+    i += 1
+    while i < len(em)
+        pt.push(em[i])
+        i += 1
+    end
+    return { "plaintext": pt, "error": "" }
+end
+
 ## Verifies a certificate signature against an issuer public key.
 ##
 ## Supports sha256/sha384/sha512 with RSA (`sha256WithRSAEncryption`

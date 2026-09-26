@@ -40,7 +40,7 @@ Comprehensive cryptography, hashing, and cipher library for Alya.
   - Base58 (Bitcoin alphanumeric alphabet)
 - ⏱️ **Timing Attack Protection**: Constant-time string and byte equality (`constant_time_eq`)
 - 🎲 **Entropy & Randomness**: Cryptographic UUID v4 and random byte generation
-- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (150 passing tests)
+- 🧪 **Well Tested**: 100% test coverage against NIST and RFC official test vectors (164 passing tests)
 
 ---
 

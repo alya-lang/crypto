@@ -1,0 +1,51 @@
+# RSA private-key parsing and decryption tests (openssl vectors)
+#
+# Suite strategy: parsing and the full-decrypt fallback run against a fast
+# 1024-bit key; the production CRT path runs against a real 2048-bit key
+# (full 2048-bit decrypt without CRT is verified manually — ~45s in debug
+# builds — and intentionally absent here to keep CI green).
+import "std/test"
+import "../src/lib.alya" as crypto
+
+function key1024_pem() -> string
+    return "-----BEGIN PRIVATE KEY-----\nMIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAN0TT8bPiteNMcQR\n5RR9CsSyNWsf+o342HujCv+4QJ4rAOpSJyYK8jRVoRbYnGer2odRtpVLh/LE6BCb\nlTS0oYKIt5gyIIX+dcl3LvOGKYhuzLvAz8QomFgKSIReI3+61br38dyFug/p6oe1\nIYzRzopfrhRxS5LnYomTtNpZiqPJAgMBAAECgYBdWIIe2BMv4JZay5OGiyW41+Zm\nTSJmP+Roj/dc8leWcWH5jqapEYYjQuS52MxxmcazzHTjpPjKMQoruQXPM1XeFw9e\nbxYJqnuJE57BdvdajS/HzWcSNT0DvMFdWBX3qkQVm1+HWCXdK1bZLQlJsO0/eNiY\nDlqcqB95kxrs/LOV4QJBAPUCD0q1FuGrpHGJwliTh3mRcOMNM61DUm0ZutlhDJFa\nT3GJIYGHBVytrb0t8tMPDcWsThSXDwfMsdBc5oST2vcCQQDm/mI2DP2Tme5pHbUC\nughRIVfFIAraqfnncQGtuvonYAmdc+GBJ19bGIt7cbnfc596VIJuS3ei7txm3Rhl\nbQc/AkByE11vWVWoCTTtsEiO2VHwpmk7LkBrYbcVGS/IWslxO+1VXZX+KxGyDyOf\nu68d2hp9eTZ5m8Phy8rWywqBnB4NAkAML0T89uh1XbxOvStsLmX76ZdYpZ0M9cRh\n6fsdr+w8IXvAW3l8t5f3FS9eXpxgZhf2evi6Wq6/4HutzWHZD8w/AkEAtiMOzoS+\nlW7KlVgJRcO49G1mEmgVsaaAgZKCLgVfUzmTWyJokkQYh+i7GMwQCzG5/NQK0cuW\nYhLo3wbQIKO/Sg==\n-----END PRIVATE KEY-----\n"
+end
+
+function priv_pem() -> string
+    return "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCpVuTha7AL0otS\nymabLAhAYDEeYfXZR0be/YcUVOHeSUolL+BVuQ+r23lj+u+g9DUOCnXl0tDk1VCC\nqIxNV35ah8RfGRoI1KB1RvvvImI6CqIzjEs4RY6bLExmSakQZ2lj/9ihIUbf9MDM\n56uMHEqO9DDXvp1wTkM8nsC6LkwGpA7Vc/wRHJfzp+0S7fO03H4g98QnZw8hIFcn\nWs30Jlh1ZGtCvOU29/MOCPZ992/XgNL3kkF9ac6rQhscMUrBJfpFe96ag40QTne1\nNZwYLNkmdun3WFg21hIJC36Ifob1gJhhp7vEDheJT9HQ0ludYzzPB0cCh1CAGRFi\ngsmdG3hzAgMBAAECggEAUqfUXmeG7a5eTRH4VWN/v5R0RUVBkEXnRO7xIS5xdWPG\nqjIdSRpkmNku/ms8zg6FWw4mEAD/78JjYvNMUHAVf7DnXBfPimHm1HfKfyYEVhpc\no9al3JivC/Tqcb8go54mZiY6oiOxCZ3ZAetO47vndLGiqZwkEu5QiWVf40C34UEl\nnV5MXoo7cCA+Td0y9LigGJ/pwm39AFCMv/CEVHRdG/1/7ikMd+j5KgOCuKJtGL/5\nXW4Go2A6gAtJHAqFV1E1TVVYAbpAacuQxiIsNnDWnFIsZUpDdag2eOkbJjEYdqlq\nuqtLpLt63ikZR774rVMZhiqIbRK/pK74zduU83sBQQKBgQDVkArqegWzrpoP+/wO\n1hDG1DJdcXnwhl2s0Ev3yS2NjaVbsFwt8AqVnUgRSERSCNIR8eGsidEg6PPywG/3\nf9DUTv+T1apRsdMzh+UeymPyWa0Qw2aYYm5t7/eOdYm2Hffw/A9SNnQczPun7Vr6\nPfp7+LBS1089hTxyQsxwJPNjEwKBgQDK/TXWUreUP1Ok6NIuOWHbag+jwL1virwH\n1REv71iGZhzm1ytrqtqhRZjmVDiSjNHF6qtbAieLeyWEuTryrebLHHxD7Q9xAM0t\njDIJRmnwxSXHP8BJTTWAs2gDo22SckixWgHWitj45+l5tY9/TPTmDlGF7x//AnWh\nWZninrjhIQKBgQCu5Tr7UZjv0NLcuklvQQIWQttISVFKmE+I4kEEmN3Uaib8ks66\n1DVm15qYhK1m3VBkX8moSmlY4U4/BDft4d/8rwGBaV8FbnL/ZZBPCgKWC7i+3Ldd\nnma/Y+FB6qIv4hUWZuaJNo0atQh3OtvhyfYjpsOH5EpBoKajEG9qe+hSvwKBgFgF\n00m8FtVXXKsfNr1Krs+Zv2xwEPWEgKMY1tolfQrSzuefGLoYnbPfXT1L+jg6jmC3\nsVTGq2VFonBabmB73p/nG0/NRavoABEnQS9adGgu5YHweC6RJ4lGwu0I+mPN4Q3f\nDPr+vLW6wzi+7ZnzQiNcxCdDGWnYpC+yjhOCZoNhAoGBAK5ulK5G8e4ZlfQCS8xg\nWBvYlnTiCB1zegpkIWxn8DC69ECTkU6MyKt7UbminV0fgfSPx47tklVeytZEJda/\nh15niEoEUZio0XV0WFyOI130oXLvLhTz4r2Mw1P5N/6USa9ynUK22oK1pO3hlOge\njq/dhVbrTe6nw3C3oxL9nmTt\n-----END PRIVATE KEY-----\n"
+end
+
+function main()
+    test_suite("RSA Private Tests")
+    let r = runner_new()
+
+    let key = crypto::rsa_parse_private_key(crypto::pem_to_der(priv_pem(), "PRIVATE KEY"))
+    runner_assert_str_eq(r, key["error"], "", "private key parses")
+    runner_assert_eq(r, len(key["n"]), 256, "modulus length")
+    runner_assert_eq(r, key["e"], 65537, "exponent")
+    runner_assert_eq(r, len(key["d"]), 256, "private exponent length")
+    runner_assert_eq(r, len(key["p"]), 128, "prime factor length")
+    runner_assert_eq(r, len(key["qinv"]), 128, "crt coefficient length")
+    runner_assert_eq(r, crypto::rsa_parse_private_key([])["error"] != "", 1, "empty key rejected")
+
+    let k1024 = crypto::rsa_parse_private_key(crypto::pem_to_der(key1024_pem(), "PRIVATE KEY"))
+    runner_assert_str_eq(r, k1024["error"], "", "1024-bit key parses")
+    let ct1024 = crypto::hex_to_bytes("10dd30c566a080cc43176256e29f00779b639464b3f8c8e3722f2738a3f3bc80105d55d8644d3e01e1e91be24def67bd9ea332059f2eff5792be0d516f3697422f9c626fa27b66a34cad6d91302e5dfa90c897325e6406a97e154b0ea532ab98a68a1e127e0f2d6d33619f8fcaa2bb5cfc0012777ab6c1ad23db39171e1ab9db")
+    let dec1024 = crypto::rsa_decrypt_bytes(k1024["n"], k1024["d"], ct1024)
+    runner_assert_str_eq(r, dec1024["error"], "", "1024-bit full decrypt works")
+    runner_assert_str_eq(r, crypto::bytes_to_str(dec1024["plaintext"]), "short-msg", "1024-bit plaintext matches")
+
+    let ct = crypto::hex_to_bytes("2f5da8cb558366d88d16b0cd1ee43d959efd8d32915cffb8122cb5debd94a51aaa539125f916c5ed64c8c2bdb8466e4dac56c31eaedec333b5e05b803049e73272c8b4bd5aaf1358c8214d4955cdd52d9edbc81e37817013456da320c98d56c7bc4ac0d777e5fbfe179c491e3d146b128b9455164dd4d82924c5e4e408de7d1c33eb9367d531538d9a9c766564765962126842d4b05cfe5b8b32060f23a5ef55c0cbc0d846b768b0c8d800ada449a842837216bf8fd6c3500a97831ca87ee8bf1b22ba9eaa875eb8ce85f80cac5f1688bc193fae5b2d3aae49f949a93597c492ae82bb28079eadb3e033eee7b3ab027d2dc00ed6a572f20b1156a950b00f8780")
+    let crt = crypto::rsa_decrypt_crt_bytes(key, ct)
+    runner_assert_str_eq(r, crt["error"], "", "CRT path decrypts 2048-bit")
+    runner_assert_str_eq(r, crypto::bytes_to_str(crt["plaintext"]), "decrypt-me-please", "CRT plaintext matches")
+    let bad = crypto::rsa_decrypt_bytes(key["n"], key["d"], crypto::hex_to_bytes("00"))
+    runner_assert_true(r, bad["error"] != "", "short ciphertext rejected")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

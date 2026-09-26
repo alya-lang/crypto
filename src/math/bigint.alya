@@ -1,8 +1,14 @@
-## # Multi-Precision Integer Arithmetic (16-bit limbs)
+## # Multi-Precision Integer Arithmetic (30-bit limbs)
 ##
-## Unsigned big integers as little-endian 16-bit limb arrays. Carries stay
-## inside 64-bit signed range (max accumulation 128 * 65535^2 < 2^63), so
-## every intermediate is exact. Powers RSA verification and key exchange.
+## Unsigned big integers as little-endian 30-bit limb arrays. Products of
+## two limbs stay below 2^60 and accumulations below 2^63, so every
+## intermediate is exact in 64-bit signed arithmetic. Powers RSA
+## verification, decryption (CRT), and key exchange.
+
+## Returns the 30-bit limb mask (2^30 - 1).
+pub function bi_mask() -> int
+    return bit_shl(1, 30) - 1
+end
 
 ## Trims leading zero limbs (keeps at least one).
 ##
@@ -82,6 +88,7 @@ end
 ## # Returns
 ## Sum limb array.
 pub function bi_add(a, b) -> array
+    let mask = bi_mask()
     let n = len(a)
     if len(b) > n
         n = len(b)
@@ -99,8 +106,8 @@ pub function bi_add(a, b) -> array
             bv = b[i]
         end
         let s = av + bv + carry
-        out.push(bit_and(s, 65535))
-        carry = bit_shr(s, 16)
+        out.push(bit_and(s, mask))
+        carry = bit_shr(s, 30)
         i += 1
     end
     if carry != 0
@@ -118,6 +125,7 @@ end
 ## # Returns
 ## Difference limb array.
 pub function bi_sub(a, b) -> array
+    let base = bit_shl(1, 30)
     let out = []
     let borrow = 0
     let i = 0
@@ -128,7 +136,7 @@ pub function bi_sub(a, b) -> array
         end
         let d = a[i] - bv - borrow
         if d < 0
-            d += 65536
+            d += base
             borrow = 1
         else
             borrow = 0
@@ -139,7 +147,7 @@ pub function bi_sub(a, b) -> array
     return bi_trim(out)
 end
 
-## Multiplies two big integers (schoolbook, 16-bit limbs).
+## Multiplies two big integers (schoolbook, 30-bit limbs).
 ##
 ## # Arguments
 ## * `a` - First operand.
@@ -148,6 +156,7 @@ end
 ## # Returns
 ## Product limb array.
 pub function bi_mul(a, b) -> array
+    let mask = bi_mask()
     if bi_is_zero(a) == 1 or bi_is_zero(b) == 1
         return [0]
     end
@@ -164,19 +173,19 @@ pub function bi_mul(a, b) -> array
         let j = 0
         while j < len(b)
             let cur = out[i + j] + a[i] * b[j] + carry
-            out[i + j] = bit_and(cur, 65535)
-            carry = bit_shr(cur, 16)
+            out[i + j] = bit_and(cur, mask)
+            carry = bit_shr(cur, 30)
             j += 1
         end
         let k = i + len(b)
         let total = out[k] + carry
-        out[k] = bit_and(total, 65535)
-        carry = bit_shr(total, 16)
+        out[k] = bit_and(total, mask)
+        carry = bit_shr(total, 30)
         k += 1
         while carry != 0
             total = out[k] + carry
-            out[k] = bit_and(total, 65535)
-            carry = bit_shr(total, 16)
+            out[k] = bit_and(total, mask)
+            carry = bit_shr(total, 30)
             k += 1
         end
         i += 1
@@ -194,6 +203,7 @@ end
 ## # Returns
 ## Shifted limb array.
 pub function bi_shl(a, limb_shift: int, bit_shift: int) -> array
+    let mask = bi_mask()
     let out = []
     let i = 0
     while i < limb_shift
@@ -204,14 +214,44 @@ pub function bi_shl(a, limb_shift: int, bit_shift: int) -> array
     i = 0
     while i < len(a)
         let cur = bit_shl(a[i], bit_shift) + carry
-        out.push(bit_and(cur, 65535))
-        carry = bit_shr(cur, 16)
+        out.push(bit_and(cur, mask))
+        carry = bit_shr(cur, 30)
         i += 1
     end
     if carry != 0
         out.push(carry)
     end
     return out
+end
+
+## Right-shifts by 1..15 bits across limbs.
+##
+## # Arguments
+## * `a` - Operand.
+## * `bit_shift` - Bit shift (1..15).
+##
+## # Returns
+## Shifted limb array.
+pub function bi_shr_limbs(a, bit_shift: int) -> array
+    if bit_shift <= 0
+        return bi_trim(a)
+    end
+    let mask = bit_shl(1, bit_shift) - 1
+    let out = []
+    let i = 0
+    while i < len(a)
+        out.push(0)
+        i += 1
+    end
+    let carry = 0
+    i = len(a) - 1
+    while i >= 0
+        let new_carry = bit_and(a[i], mask)
+        out[i] = bit_or(bit_shr(a[i], bit_shift), bit_shl(carry, 30 - bit_shift))
+        carry = new_carry
+        i -= 1
+    end
+    return bi_trim(out)
 end
 
 ## Computes quotient and remainder by binary long division.
@@ -247,36 +287,6 @@ pub function bi_divmod(a, b) -> array
         end
     end
     return [bi_trim(q), bi_trim(r)]
-end
-
-## Right-shifts by 1..15 bits across limbs.
-##
-## # Arguments
-## * `a` - Operand.
-## * `bit_shift` - Bit shift (1..15).
-##
-## # Returns
-## Shifted limb array.
-pub function bi_shr_limbs(a, bit_shift: int) -> array
-    if bit_shift <= 0
-        return bi_trim(a)
-    end
-    let mask = bit_shl(1, bit_shift) - 1
-    let out = []
-    let i = 0
-    while i < len(a)
-        out.push(0)
-        i += 1
-    end
-    let carry = 0
-    i = len(a) - 1
-    while i >= 0
-        let new_carry = bit_and(a[i], mask)
-        out[i] = bit_or(bit_shr(a[i], bit_shift), bit_shl(carry, 16 - bit_shift))
-        carry = new_carry
-        i -= 1
-    end
-    return bi_trim(out)
 end
 
 ## Computes `a mod m`.
@@ -326,7 +336,7 @@ end
 ##
 ## # Arguments
 ## * `base` - Base limbs.
-## * `exp_limbs` - Exponent little-endian 16-bit limbs.
+## * `exp_limbs` - Exponent little-endian 30-bit limbs.
 ## * `modulo` - Modulus limbs.
 ##
 ## # Returns
@@ -338,7 +348,7 @@ pub function bi_modexp(base, exp_limbs, modulo) -> array
     while li < len(exp_limbs)
         let mask = 1
         let bit = 0
-        while bit < 16
+        while bit < 30
             if bit_and(exp_limbs[li], mask) != 0
                 result = bi_mod(bi_mul(result, b), modulo)
             end
@@ -357,19 +367,20 @@ end
 ## * `bytes` - Big-endian byte array.
 ##
 ## # Returns
-## Little-endian 16-bit limb array.
+## Little-endian 30-bit limb array.
 pub function bi_from_bytes(bytes) -> array
+    let mask = bi_mask()
     let out = []
-    let i = len(bytes) - 1
     let acc = 0
     let bits = 0
+    let i = len(bytes) - 1
     while i >= 0
         acc = bit_or(acc, bit_shl(bit_and(bytes[i], 255), bits))
         bits += 8
-        if bits == 16
-            out.push(acc)
-            acc = 0
-            bits = 0
+        while bits >= 30
+            out.push(bit_and(acc, mask))
+            acc = bit_shr(acc, 30)
+            bits -= 30
         end
         i -= 1
     end
@@ -394,14 +405,19 @@ pub function bi_to_bytes(a, out_len: int) -> array
         le.push(0)
         i += 1
     end
+    let acc = 0
+    let bits = 0
     let pos = 0
     i = 0
     while i < len(a) and pos < out_len
-        le[pos] = bit_and(a[i], 255)
-        if pos + 1 < out_len
-            le[pos + 1] = bit_and(bit_shr(a[i], 8), 255)
+        acc = bit_or(acc, bit_shl(a[i], bits))
+        bits += 30
+        while bits >= 8 and pos < out_len
+            le[pos] = bit_and(acc, 255)
+            acc = bit_shr(acc, 8)
+            bits -= 8
+            pos += 1
         end
-        pos += 2
         i += 1
     end
     let out = []
