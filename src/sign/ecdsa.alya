@@ -4,10 +4,10 @@
 ## Pure-Alya ECDSA with SHA-256: deterministic-shape signing with a fresh
 ## random nonce per signature, DER encode/decode, SPKI public-key parsing,
 ## and PKCS#8/SEC1 private-key parsing. Powers TLS ECDHE-ECDSA and chain
-## verification. Scalar arithmetic reuses `math/bigint` modulo the group
+## verification. Scalar arithmetic reuses the `math` package modulo the group
 ## order; curve arithmetic lives in `kex/p256`.
 
-import "../math/bigint.alya"
+import "math" as math
 import "../hashes/sha256.alya"
 import "../encodings/hex.alya"
 import "../random/entropy.alya"
@@ -16,7 +16,7 @@ import "./rsa.alya"
 
 ## Group order n limbs (cached per call).
 function _ecdsa_n() -> array
-    return bi_from_bytes(hex_to_bytes("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551"))
+    return math::bi_from_bytes(hex_to_bytes("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551"))
 end
 
 ## Copies a byte array element-wise (isolates caller storage).
@@ -39,15 +39,15 @@ function _ecdsa_modn(be) -> array
     if be is null or len(be) == 0
         return [0]
     end
-    return bi_mod(bi_from_bytes(be), n)
+    return math::bi_mod(math::bi_from_bytes(be), n)
 end
 
 ## Inverts limbs modulo n (Fermat, n prime).
 function _ecdsa_inv_n(x) -> array
     let n = _ecdsa_n()
-    let two = bi_from_bytes([2])
-    let exp = bi_sub(n, two)
-    return bi_modexp(x, exp, n)
+    let two = math::bi_from_bytes([2])
+    let exp = math::bi_sub(n, two)
+    return math::bi_modexp(x, exp, n)
 end
 
 ## Encodes two 32-byte scalars as DER signature bytes.
@@ -225,23 +225,23 @@ pub function ecdsa_sign_hash(priv, hash32) -> map
         i += 1
     end
     let n = _ecdsa_n()
-    if bi_cmp(bi_from_bytes(d), [0]) <= 0 or bi_cmp(bi_from_bytes(d), n) >= 0
+    if math::bi_cmp(math::bi_from_bytes(d), [0]) <= 0 or math::bi_cmp(math::bi_from_bytes(d), n) >= 0
         return { "r": [], "s": [], "der": [], "error": "private scalar out of range" }
     end
     let e = _ecdsa_modn(h)
     let tries = 0
     while tries < 8
         let k = random_bytes(32)
-        if bi_cmp(bi_from_bytes(k), [0]) > 0 and bi_cmp(bi_from_bytes(k), n) < 0
+        if math::bi_cmp(math::bi_from_bytes(k), [0]) > 0 and math::bi_cmp(math::bi_from_bytes(k), n) < 0
             let pt = _p256_base_mult(_ecdsa_dup(k))
             if pt is not null
-                let r = bi_mod(bi_from_bytes(_p256_to_bytes(pt["x"])), n)
-                if bi_cmp(r, [0]) > 0
-                    let kinv = _ecdsa_inv_n(bi_from_bytes(k))
-                    let s = bi_mod(bi_mul(kinv, bi_add(e, bi_mod(bi_mul(r, bi_from_bytes(d)), n))), n)
-                    if bi_cmp(s, [0]) > 0
-                        let rb = bi_to_bytes(r, 32)
-                        let sb = bi_to_bytes(s, 32)
+                let r = math::bi_mod(math::bi_from_bytes(_p256_to_bytes(pt["x"])), n)
+                if math::bi_cmp(r, [0]) > 0
+                    let kinv = _ecdsa_inv_n(math::bi_from_bytes(k))
+                    let s = math::bi_mod(math::bi_mul(kinv, math::bi_add(e, math::bi_mod(math::bi_mul(r, math::bi_from_bytes(d)), n))), n)
+                    if math::bi_cmp(s, [0]) > 0
+                        let rb = math::bi_to_bytes(r, 32)
+                        let sb = math::bi_to_bytes(s, 32)
                         return { "r": rb, "s": sb, "der": ecdsa_sig_encode_der(rb, sb), "error": "" }
                     end
                 end
@@ -270,12 +270,12 @@ pub function ecdsa_verify_hash(pub65, hash32, sig_der) -> int
         return 0
     end
     let n = _ecdsa_n()
-    let r = bi_from_bytes(ps["r"])
-    let s = bi_from_bytes(ps["s"])
-    if bi_cmp(r, [0]) <= 0 or bi_cmp(r, n) >= 0
+    let r = math::bi_from_bytes(ps["r"])
+    let s = math::bi_from_bytes(ps["s"])
+    if math::bi_cmp(r, [0]) <= 0 or math::bi_cmp(r, n) >= 0
         return 0
     end
-    if bi_cmp(s, [0]) <= 0 or bi_cmp(s, n) >= 0
+    if math::bi_cmp(s, [0]) <= 0 or math::bi_cmp(s, n) >= 0
         return 0
     end
     let h = []
@@ -286,10 +286,10 @@ pub function ecdsa_verify_hash(pub65, hash32, sig_der) -> int
     end
     let e = _ecdsa_modn(h)
     let w = _ecdsa_inv_n(s)
-    let u1 = bi_mod(bi_mul(e, w), n)
-    let u2 = bi_mod(bi_mul(r, w), n)
-    let u1b = bi_to_bytes(u1, 32)
-    let u2b = bi_to_bytes(u2, 32)
+    let u1 = math::bi_mod(math::bi_mul(e, w), n)
+    let u2 = math::bi_mod(math::bi_mul(r, w), n)
+    let u1b = math::bi_to_bytes(u1, 32)
+    let u2b = math::bi_to_bytes(u2, 32)
     let p1 = _p256_point_mult(_ecdsa_dup(u1b), _p256_gx(), _p256_gy())
     let qp = p256_point_decode(_ecdsa_dup(pub65))
     if qp["error"] != ""
@@ -317,8 +317,8 @@ pub function ecdsa_verify_hash(pub65, hash32, sig_der) -> int
     if apt["error"] != ""
         return 0
     end
-    let v = bi_mod(bi_from_bytes(_p256_to_bytes(apt["x"])), n)
-    if bi_cmp(v, r) == 0
+    let v = math::bi_mod(math::bi_from_bytes(_p256_to_bytes(apt["x"])), n)
+    if math::bi_cmp(v, r) == 0
         return 1
     end
     return 0

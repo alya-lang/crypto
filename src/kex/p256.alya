@@ -6,7 +6,6 @@
 ## coordinates (single inversion per scalar multiply), scalars use
 ## double-and-add. Powers `p256_ecdh`, `p256_keygen`, and ECDSA.
 
-import "../math/bigint.alya"
 import "../hashes/sha256.alya"
 import "../encodings/hex.alya"
 import "../random/entropy.alya"

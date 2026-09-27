@@ -5,7 +5,7 @@
 ## certificates, and CA-issued chains. Key parsing reads SubjectPublicKeyInfo
 ## structures straight from certificate DER bytes.
 
-import "../math/bigint.alya"
+import "math" as math
 import "../hashes/sha256.alya"
 import "../hashes/sha512.alya"
 import "../encodings/base64.alya"
@@ -349,7 +349,7 @@ pub function rsa_verify(n_bytes, e: int, algo: string, msg, sig) -> int
     end
     let digest = rsa_hash(algo, msg)
     let k = len(n_bytes)
-    let em = bi_to_bytes(bi_modexp_int(bi_from_bytes(sig), e, bi_from_bytes(n_bytes)), k)
+    let em = math::bi_to_bytes(math::bi_modexp_int(math::bi_from_bytes(sig), e, math::bi_from_bytes(n_bytes)), k)
     if em[0] != 0 or em[1] != 1
         return 0
     end
@@ -525,16 +525,16 @@ end
 ## # Returns
 ## Plaintext integer limbs.
 pub function rsa_decrypt_crt(c, p_bytes, q_bytes, dp_bytes, dq_bytes, qinv_bytes, n_bytes)
-    let p = bi_from_bytes(p_bytes)
-    let q = bi_from_bytes(q_bytes)
-    let m1 = bi_modexp(c, bi_from_bytes(dp_bytes), p)
-    let m2 = bi_modexp(c, bi_from_bytes(dq_bytes), q)
+    let p = math::bi_from_bytes(p_bytes)
+    let q = math::bi_from_bytes(q_bytes)
+    let m1 = math::bi_modexp(c, math::bi_from_bytes(dp_bytes), p)
+    let m2 = math::bi_modexp(c, math::bi_from_bytes(dq_bytes), q)
     let diff = m1
-    if bi_cmp(m1, m2) < 0
-        diff = bi_add(m1, p)
+    if math::bi_cmp(m1, m2) < 0
+        diff = math::bi_add(m1, p)
     end
-    let h = bi_mod(bi_mul(bi_sub(diff, m2), bi_from_bytes(qinv_bytes)), p)
-    return bi_mod(bi_add(m2, bi_mul(h, q)), bi_from_bytes(n_bytes))
+    let h = math::bi_mod(math::bi_mul(math::bi_sub(diff, m2), math::bi_from_bytes(qinv_bytes)), p)
+    return math::bi_mod(math::bi_add(m2, math::bi_mul(h, q)), math::bi_from_bytes(n_bytes))
 end
 
 ## Decrypts PKCS#1 v1.5 type-2 ciphertext with an RSA private key.
@@ -557,8 +557,8 @@ pub function rsa_decrypt_bytes(n_bytes, d_bytes, ct) -> map
     if len(ct) != len(n_bytes) or len(n_bytes) < 64
         return fail
     end
-    let m = bi_modexp(bi_from_bytes(ct), bi_from_bytes(d_bytes), bi_from_bytes(n_bytes))
-    let em = bi_to_bytes(m, len(n_bytes))
+    let m = math::bi_modexp(math::bi_from_bytes(ct), math::bi_from_bytes(d_bytes), math::bi_from_bytes(n_bytes))
+    let em = math::bi_to_bytes(m, len(n_bytes))
     if len(em) < 11 or em[0] != 0 or em[1] != 2
         return fail
     end
@@ -599,8 +599,8 @@ pub function rsa_decrypt_crt_bytes(key, ct) -> map
     if len(ct) != len(key["n"])
         return fail
     end
-    let m = rsa_decrypt_crt(bi_from_bytes(ct), key["p"], key["q"], key["dp"], key["dq"], key["qinv"], key["n"])
-    let em = bi_to_bytes(m, len(key["n"]))
+    let m = rsa_decrypt_crt(math::bi_from_bytes(ct), key["p"], key["q"], key["dp"], key["dq"], key["qinv"], key["n"])
+    let em = math::bi_to_bytes(m, len(key["n"]))
     if len(em) < 11 or em[0] != 0 or em[1] != 2
         return fail
     end
@@ -666,8 +666,8 @@ pub function rsa_sign_pkcs1v15(key, algo: string, msg) -> map
         em.push(digest[i])
         i += 1
     end
-    let m = rsa_decrypt_crt(bi_from_bytes(em), key["p"], key["q"], key["dp"], key["dq"], key["qinv"], key["n"])
-    return { "signature": bi_to_bytes(m, k), "error": "" }
+    let m = rsa_decrypt_crt(math::bi_from_bytes(em), key["p"], key["q"], key["dp"], key["dq"], key["qinv"], key["n"])
+    return { "signature": math::bi_to_bytes(m, k), "error": "" }
 end
 
 ## Verifies a certificate signature against an issuer public key.

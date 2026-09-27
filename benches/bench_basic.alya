@@ -1,5 +1,6 @@
 # Comprehensive Benchmark suite for crypto v0.1.0
 import "std/bench"
+import "math" as math
 import "../src/lib.alya" as crypto
 
 function main()
@@ -185,13 +186,13 @@ function main()
     end
     bench_stop(runner, "x25519() 20 exchanges")
 
-    # 19. 2048-bit modular exponentiation (RSAcore)
-    let mexp_base = crypto::bi_from_bytes(crypto::hex_to_bytes("075bcd15"))
-    let mexp_mod = crypto::bi_sub(crypto::bi_shl([1], 128, 0), crypto::bi_from_bytes(crypto::hex_to_bytes("1da311")))
+    # 19. 2048-bit modular exponentiation (math core)
+    let mexp_base = math::bi_from_bytes(crypto::hex_to_bytes("075bcd15"))
+    let mexp_mod = math::bi_sub(math::bi_shl([1], 128, 0), math::bi_from_bytes(crypto::hex_to_bytes("1da311")))
     bench_start(runner, 20)
     let mexp_i = 0
     while mexp_i < 20
-        crypto::bi_modexp_int(mexp_base, 65537, mexp_mod)
+        math::bi_modexp_int(mexp_base, 65537, mexp_mod)
         mexp_i += 1
     end
     bench_stop(runner, "bi_modexp_int() 2048-bit 20 ops")
