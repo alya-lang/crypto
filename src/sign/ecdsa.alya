@@ -1,0 +1,506 @@
+## # ECDSA Signatures and EC Key Parsing on secp256r1
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Pure-Alya ECDSA with SHA-256: deterministic-shape signing with a fresh
+## random nonce per signature, DER encode/decode, SPKI public-key parsing,
+## and PKCS#8/SEC1 private-key parsing. Powers TLS ECDHE-ECDSA and chain
+## verification. Scalar arithmetic reuses `math/bigint` modulo the group
+## order; curve arithmetic lives in `kex/p256`.
+
+import "../math/bigint.alya"
+import "../hashes/sha256.alya"
+import "../encodings/hex.alya"
+import "../random/entropy.alya"
+import "../kex/p256.alya"
+import "./rsa.alya"
+
+## Group order n limbs (cached per call).
+function _ecdsa_n() -> array
+    return bi_from_bytes(hex_to_bytes("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551"))
+end
+
+## Copies a byte array element-wise (isolates caller storage).
+function _ecdsa_dup(a) -> array
+    let out = []
+    if a is null
+        return out
+    end
+    let i = 0
+    while i < len(a)
+        out.push(a[i])
+        i += 1
+    end
+    return out
+end
+
+## Reduces big-endian bytes modulo n into limbs.
+function _ecdsa_modn(be) -> array
+    let n = _ecdsa_n()
+    if be is null or len(be) == 0
+        return [0]
+    end
+    return bi_mod(bi_from_bytes(be), n)
+end
+
+## Inverts limbs modulo n (Fermat, n prime).
+function _ecdsa_inv_n(x) -> array
+    let n = _ecdsa_n()
+    let two = bi_from_bytes([2])
+    let exp = bi_sub(n, two)
+    return bi_modexp(x, exp, n)
+end
+
+## Encodes two 32-byte scalars as DER signature bytes.
+##
+## ### Returns
+## DER byte array, or empty on bad input.
+pub function ecdsa_sig_encode_der(r_be, s_be) -> array
+    if r_be is null or s_be is null or len(r_be) == 0 or len(s_be) == 0
+        return []
+    end
+    let r = _ecdsa_dup(r_be)
+    while len(r) > 1 and r[0] == 0
+        let t = []
+        let i = 1
+        while i < len(r)
+            t.push(r[i])
+            i += 1
+        end
+        r = t
+    end
+    let s = _ecdsa_dup(s_be)
+    while len(s) > 1 and s[0] == 0
+        let t = []
+        let i = 1
+        while i < len(s)
+            t.push(s[i])
+            i += 1
+        end
+        s = t
+    end
+    let body = [2]
+    if r[0] >= 128
+        body.push(len(r) + 1)
+        body.push(0)
+    else
+        body.push(len(r))
+    end
+    let i = 0
+    while i < len(r)
+        body.push(r[i])
+        i += 1
+    end
+    body.push(2)
+    if s[0] >= 128
+        body.push(len(s) + 1)
+        body.push(0)
+    else
+        body.push(len(s))
+    end
+    i = 0
+    while i < len(s)
+        body.push(s[i])
+        i += 1
+    end
+    let out = [48]
+    if len(body) < 128
+        out.push(len(body))
+    else
+        out.push(129)
+        out.push(len(body))
+    end
+    i = 0
+    while i < len(body)
+        out.push(body[i])
+        i += 1
+    end
+    return out
+end
+
+## Parses a DER ECDSA signature into raw scalars.
+##
+## ### Returns
+## Map with `r`, `s` (32-byte arrays) and `error` fields.
+pub function ecdsa_sig_parse_der(sig) -> map
+    let fail = { "r": [], "s": [], "error": "malformed ECDSA signature" }
+    if sig is null or len(sig) < 8 or sig[0] != 48
+        return fail
+    end
+    let pos = 2
+    if sig[1] == 129
+        pos = 3
+    elif sig[1] >= 128
+        return fail
+    end
+    if pos + 2 > len(sig) or sig[pos] != 2
+        return fail
+    end
+    let rlen = sig[pos + 1]
+    if rlen <= 0 or rlen > 33 or pos + 2 + rlen + 2 > len(sig)
+        return fail
+    end
+    let r = []
+    let i = 0
+    while i < rlen
+        r.push(sig[pos + 2 + i])
+        i += 1
+    end
+    pos = pos + 2 + rlen
+    if pos + 2 > len(sig) or sig[pos] != 2
+        return fail
+    end
+    let slen = sig[pos + 1]
+    if slen <= 0 or slen > 33 or pos + 2 + slen > len(sig)
+        return fail
+    end
+    let s = []
+    i = 0
+    while i < slen
+        s.push(sig[pos + 2 + i])
+        i += 1
+    end
+    while len(r) > 32 and r[0] == 0
+        let t = []
+        i = 1
+        while i < len(r)
+            t.push(r[i])
+            i += 1
+        end
+        r = t
+    end
+    while len(s) > 32 and s[0] == 0
+        let t = []
+        i = 1
+        while i < len(s)
+            t.push(s[i])
+            i += 1
+        end
+        s = t
+    end
+    if len(r) > 32 or len(s) > 32
+        return fail
+    end
+    while len(r) < 32
+        let t = [0]
+        i = 0
+        while i < len(r)
+            t.push(r[i])
+            i += 1
+        end
+        r = t
+    end
+    while len(s) < 32
+        let t = [0]
+        i = 0
+        while i < len(s)
+            t.push(s[i])
+            i += 1
+        end
+        s = t
+    end
+    return { "r": r, "s": s, "error": "" }
+end
+
+## Signs a 32-byte hash with a P-256 private scalar.
+##
+## Uses a fresh random nonce per call. Returns raw scalars plus DER.
+##
+## ### Parameters
+## - `priv`: 32-byte private scalar.
+## - `hash32`: 32-byte message hash (longer input truncates leftmost 32).
+##
+## ### Returns
+## Map with `r`, `s`, `der`, and `error` fields.
+pub function ecdsa_sign_hash(priv, hash32) -> map
+    let fail = { "r": [], "s": [], "der": [], "error": "ECDSA signing failed" }
+    if priv is null or len(priv) != 32 or hash32 is null or len(hash32) < 32
+        return fail
+    end
+    let d = _ecdsa_dup(priv)
+    let hfull = _ecdsa_dup(hash32)
+    let h = []
+    let i = 0
+    while i < 32
+        h.push(hfull[i])
+        i += 1
+    end
+    let n = _ecdsa_n()
+    if bi_cmp(bi_from_bytes(d), [0]) <= 0 or bi_cmp(bi_from_bytes(d), n) >= 0
+        return { "r": [], "s": [], "der": [], "error": "private scalar out of range" }
+    end
+    let e = _ecdsa_modn(h)
+    let tries = 0
+    while tries < 8
+        let k = random_bytes(32)
+        if bi_cmp(bi_from_bytes(k), [0]) > 0 and bi_cmp(bi_from_bytes(k), n) < 0
+            let pt = _p256_base_mult(_ecdsa_dup(k))
+            if pt is not null
+                let r = bi_mod(bi_from_bytes(_p256_to_bytes(pt["x"])), n)
+                if bi_cmp(r, [0]) > 0
+                    let kinv = _ecdsa_inv_n(bi_from_bytes(k))
+                    let s = bi_mod(bi_mul(kinv, bi_add(e, bi_mod(bi_mul(r, bi_from_bytes(d)), n))), n)
+                    if bi_cmp(s, [0]) > 0
+                        let rb = bi_to_bytes(r, 32)
+                        let sb = bi_to_bytes(s, 32)
+                        return { "r": rb, "s": sb, "der": ecdsa_sig_encode_der(rb, sb), "error": "" }
+                    end
+                end
+            end
+        end
+        tries += 1
+    end
+    return fail
+end
+
+## Verifies a DER ECDSA signature over a 32-byte hash.
+##
+## ### Parameters
+## - `pub65`: 65-byte uncompressed peer point.
+## - `hash32`: 32-byte message hash.
+## - `sig_der`: DER signature bytes.
+##
+## ### Returns
+## `1` on valid signature, `0` otherwise.
+pub function ecdsa_verify_hash(pub65, hash32, sig_der) -> int
+    if pub65 is null or len(pub65) != 65 or hash32 is null or len(hash32) < 32
+        return 0
+    end
+    let ps = ecdsa_sig_parse_der(sig_der)
+    if ps["error"] != ""
+        return 0
+    end
+    let n = _ecdsa_n()
+    let r = bi_from_bytes(ps["r"])
+    let s = bi_from_bytes(ps["s"])
+    if bi_cmp(r, [0]) <= 0 or bi_cmp(r, n) >= 0
+        return 0
+    end
+    if bi_cmp(s, [0]) <= 0 or bi_cmp(s, n) >= 0
+        return 0
+    end
+    let h = []
+    let i = 0
+    while i < 32
+        h.push(hash32[i])
+        i += 1
+    end
+    let e = _ecdsa_modn(h)
+    let w = _ecdsa_inv_n(s)
+    let u1 = bi_mod(bi_mul(e, w), n)
+    let u2 = bi_mod(bi_mul(r, w), n)
+    let u1b = bi_to_bytes(u1, 32)
+    let u2b = bi_to_bytes(u2, 32)
+    let p1 = _p256_point_mult(_ecdsa_dup(u1b), _p256_gx(), _p256_gy())
+    let qp = p256_point_decode(_ecdsa_dup(pub65))
+    if qp["error"] != ""
+        return 0
+    end
+    let qx = _ecdsa_dup(qp["x"])
+    let qy = _ecdsa_dup(qp["y"])
+    let p2 = _p256_point_mult(_ecdsa_dup(u2b), qx, qy)
+    let acc = []
+    if p1 is not null
+        acc = p256_point_encode(p1["x"], p1["y"])
+    end
+    if p2 is not null
+        let e2 = p256_point_encode(p2["x"], p2["y"])
+        if len(acc) == 0
+            acc = e2
+        elif len(e2) != 0
+            acc = p256_point_add(acc, e2)
+        end
+    end
+    if len(acc) != 65
+        return 0
+    end
+    let apt = p256_point_decode(acc)
+    if apt["error"] != ""
+        return 0
+    end
+    let v = bi_mod(bi_from_bytes(_p256_to_bytes(apt["x"])), n)
+    if bi_cmp(v, r) == 0
+        return 1
+    end
+    return 0
+end
+
+## Reads a BIT STRING payload at a TLV offset.
+function _ecdsa_bitstring_at(data, pos: int) -> map
+    let fail = { "bytes": [], "next": pos, "error": "bad bit string" }
+    let t = rsa_tlv_at(data, pos)
+    if t["error"] != "" or t["tag"] != 3
+        return fail
+    end
+    let start = pos + t["header_len"]
+    if start + t["length"] > len(data) or t["length"] < 1
+        return fail
+    end
+    if data[start] != 0
+        return fail
+    end
+    let out = []
+    let i = 1
+    while i < t["length"]
+        out.push(data[start + i])
+        i += 1
+    end
+    return { "bytes": out, "next": start + t["length"], "error": "" }
+end
+
+## Reads an OCTET STRING payload at a TLV offset.
+function _ecdsa_octets_at(data, pos: int) -> map
+    let fail = { "bytes": [], "next": pos, "error": "bad octet string" }
+    let t = rsa_tlv_at(data, pos)
+    if t["error"] != "" or t["tag"] != 4
+        return fail
+    end
+    let start = pos + t["header_len"]
+    if start + t["length"] > len(data)
+        return fail
+    end
+    let out = []
+    let i = 0
+    while i < t["length"]
+        out.push(data[start + i])
+        i += 1
+    end
+    return { "bytes": out, "next": start + t["length"], "error": "" }
+end
+
+## Reads an OID body at a TLV offset.
+function _ecdsa_oid_at(data, pos: int) -> map
+    let fail = { "bytes": [], "next": pos, "error": "bad oid" }
+    let t = rsa_tlv_at(data, pos)
+    if t["error"] != "" or t["tag"] != 6
+        return fail
+    end
+    let start = pos + t["header_len"]
+    if start + t["length"] > len(data)
+        return fail
+    end
+    let out = []
+    let i = 0
+    while i < t["length"]
+        out.push(data[start + i])
+        i += 1
+    end
+    return { "bytes": out, "next": start + t["length"], "error": "" }
+end
+
+## Compares two byte arrays for equality.
+function _ecdsa_bytes_eq(a, b) -> int
+    if a is null or b is null or len(a) != len(b)
+        return 0
+    end
+    let i = 0
+    while i < len(a)
+        if a[i] != b[i]
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+## Parses an X.509 SubjectPublicKeyInfo holding a secp256r1 key.
+##
+## Expects the ecPublicKey + secp256r1 algorithm pair and an uncompressed
+## BIT STRING point.
+##
+## ### Returns
+## Map with `pub` (65 bytes) and `error` fields.
+pub function ec_parse_spki_pubkey(der) -> map
+    let fail = { "pub": [], "error": "no EC public key found" }
+    if der is null or len(der) < 32
+        return fail
+    end
+    let outer = rsa_tlv_at(der, 0)
+    if outer["error"] != "" or outer["tag"] != 48
+        return fail
+    end
+    let pos = outer["header_len"]
+    let alg = rsa_tlv_at(der, pos)
+    if alg["error"] != "" or alg["tag"] != 48
+        return fail
+    end
+    let apos = pos + alg["header_len"]
+    let oid = _ecdsa_oid_at(der, apos)
+    if oid["error"] != ""
+        return fail
+    end
+    if _ecdsa_bytes_eq(oid["bytes"], [42, 134, 72, 206, 61, 2, 1]) == 0
+        return fail
+    end
+    let curve = _ecdsa_oid_at(der, oid["next"])
+    if curve["error"] != ""
+        return fail
+    end
+    if _ecdsa_bytes_eq(curve["bytes"], [42, 134, 72, 206, 61, 3, 1, 7]) == 0
+        return fail
+    end
+    let bits = _ecdsa_bitstring_at(der, pos + alg["total_len"])
+    if bits["error"] != "" or len(bits["bytes"]) != 65
+        return fail
+    end
+    let pt = p256_point_decode(_ecdsa_dup(bits["bytes"]))
+    if pt["error"] != ""
+        return { "pub": [], "error": pt["error"] }
+    end
+    return { "pub": bits["bytes"], "error": "" }
+end
+
+## Parses a PKCS#8 ECPrivateKey (wrapping SEC1) into a 32-byte scalar.
+##
+## ### Returns
+## Map with `priv` and `error` fields.
+pub function ec_parse_pkcs8_priv(der) -> map
+    let fail = { "priv": [], "error": "no EC private key found" }
+    if der is null or len(der) < 32
+        return fail
+    end
+    let outer = rsa_tlv_at(der, 0)
+    if outer["error"] != "" or outer["tag"] != 48
+        return fail
+    end
+    let pos = outer["header_len"]
+    let ver = rsa_tlv_at(der, pos)
+    if ver["error"] != ""
+        return fail
+    end
+    pos += ver["total_len"]
+    let alg = rsa_tlv_at(der, pos)
+    if alg["error"] != "" or alg["tag"] != 48
+        return fail
+    end
+    pos += alg["total_len"]
+    let oct = _ecdsa_octets_at(der, pos)
+    if oct["error"] != ""
+        return fail
+    end
+    return ec_parse_sec1_priv(oct["bytes"])
+end
+
+## Parses a SEC1 ECPrivateKey body into a 32-byte scalar.
+##
+## ### Returns
+## Map with `priv` and `error` fields.
+pub function ec_parse_sec1_priv(der) -> map
+    let fail = { "priv": [], "error": "no EC private key found" }
+    if der is null or len(der) < 32
+        return fail
+    end
+    let outer = rsa_tlv_at(der, 0)
+    if outer["error"] != "" or outer["tag"] != 48
+        return fail
+    end
+    let pos = outer["header_len"]
+    let ver = rsa_read_integer(der, pos)
+    if ver["error"] != ""
+        return fail
+    end
+    let oct = _ecdsa_octets_at(der, ver["next"])
+    if oct["error"] != "" or len(oct["bytes"]) != 32
+        return fail
+    end
+    return { "priv": oct["bytes"], "error": "" }
+end

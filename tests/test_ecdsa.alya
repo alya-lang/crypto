@@ -1,0 +1,85 @@
+## Test suite for ECDSA signatures and EC key parsing (secp256r1).
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+import "std/test"
+import "../src/lib.alya" as crypto
+
+function v_pub() -> array
+    let out = [4]
+    let raw = crypto::hex_to_bytes("8c899f4d8d3e28ab360de95964a8e3bdfab31510b89b5d70fe891c67316e5f8ca15ae1eec669bbe551626a9046ca65d2d956bd3812ffd617230d35ca1e24e1f8")
+    let i = 0
+    while i < len(raw)
+        out.push(raw[i])
+        i += 1
+    end
+    return out
+end
+
+function v_priv() -> array
+    return crypto::hex_to_bytes("000000519b423d715f8b581f4e9df983175939e476f89dc8ef8d47e0c0d1d0ca")
+end
+
+function v_hash() -> array
+    return crypto::hex_to_bytes("95ae7b6c848c8880959db333258341fc833bec88741e07bfc92b14802f5b08a6")
+end
+
+function v_der() -> array
+    return crypto::hex_to_bytes("30440220366eecd57c355b8665d0c18e5a3b21ac27da186486aba41cc25c4009052069fa022032c8cc4e07927ac19aee38b979d818059cabd7ec5e5f633c3b9886083a14c0cd")
+end
+
+function main()
+    test_suite("ECDSA Tests")
+    let r = runner_new()
+
+    # 1. DER parse of a Python-generated signature.
+    let ps = crypto::ecdsa_sig_parse_der(v_der())
+    runner_assert_str_eq(r, ps["error"], "", "der parses")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(ps["r"]), "366eecd57c355b8665d0c18e5a3b21ac27da186486aba41cc25c4009052069fa", "der r")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(ps["s"]), "32c8cc4e07927ac19aee38b979d818059cabd7ec5e5f633c3b9886083a14c0cd", "der s")
+
+    # 2. Verify against the Python reference.
+    runner_assert_eq(r, crypto::ecdsa_verify_hash(v_pub(), v_hash(), v_der()), 1, "reference signature verifies")
+
+    # 3. Tampered signature fails.
+    let bad = v_der()
+    bad[len(bad) - 1] = bit_and(bad[len(bad) - 1] + 1, 255)
+    runner_assert_eq(r, crypto::ecdsa_verify_hash(v_pub(), v_hash(), bad), 0, "tampered signature rejected")
+
+    # 4. Sign roundtrip.
+    let sg = crypto::ecdsa_sign_hash(v_priv(), v_hash())
+    runner_assert_str_eq(r, sg["error"], "", "sign ok")
+    runner_assert_eq(r, crypto::ecdsa_verify_hash(v_pub(), v_hash(), sg["der"]), 1, "own signature verifies")
+
+    # 5. SPKI public key parse.
+    let spki = crypto::hex_to_bytes("3059301306072a8648ce3d020106082a8648ce3d030107034200048c899f4d8d3e28ab360de95964a8e3bdfab31510b89b5d70fe891c67316e5f8ca15ae1eec669bbe551626a9046ca65d2d956bd3812ffd617230d35ca1e24e1f8")
+    let pk = crypto::ec_parse_spki_pubkey(spki)
+    runner_assert_str_eq(r, pk["error"], "", "spki parses")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(pk["pub"]), crypto::bytes_to_hex(v_pub()), "spki point matches")
+
+    # 6. PKCS#8 and SEC1 private key parse.
+    let p8 = crypto::hex_to_bytes("308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b0201010420000000519b423d715f8b581f4e9df983175939e476f89dc8ef8d47e0c0d1d0caa144034200048c899f4d8d3e28ab360de95964a8e3bdfab31510b89b5d70fe891c67316e5f8ca15ae1eec669bbe551626a9046ca65d2d956bd3812ffd617230d35ca1e24e1f8")
+    let kp = crypto::ec_parse_pkcs8_priv(p8)
+    runner_assert_str_eq(r, kp["error"], "", "pkcs8 parses")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(kp["priv"]), crypto::bytes_to_hex(v_priv()), "pkcs8 scalar matches")
+    let sec1 = crypto::hex_to_bytes("30770201010420000000519b423d715f8b581f4e9df983175939e476f89dc8ef8d47e0c0d1d0ca00a06082a8648ce3d030107a144034200048c899f4d8d3e28ab360de95964a8e3bdfab31510b89b5d70fe891c67316e5f8ca15ae1eec669bbe551626a9046ca65d2d956bd3812ffd617230d35ca1e24e1f8")
+    let ks = crypto::ec_parse_sec1_priv(sec1)
+    runner_assert_str_eq(r, ks["error"], "", "sec1 parses")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(ks["priv"]), crypto::bytes_to_hex(v_priv()), "sec1 scalar matches")
+
+    # 7. RSA PKCS#1 v1.5 sign roundtrip (fast 1024-bit key).
+    let pem1024 = "-----BEGIN PRIVATE KEY-----\nMIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAN0TT8bPiteNMcQR\n5RR9CsSyNWsf+o342HujCv+4QJ4rAOpSJyYK8jRVoRbYnGer2odRtpVLh/LE6BCb\nlTS0oYKIt5gyIIX+dcl3LvOGKYhuzLvAz8QomFgKSIReI3+61br38dyFug/p6oe1\nIYzRzopfrhRxS5LnYomTtNpZiqPJAgMBAAECgYBdWIIe2BMv4JZay5OGiyW41+Zm\nTSJmP+Roj/dc8leWcWH5jqapEYYjQuS52MxxmcazzHTjpPjKMQoruQXPM1XeFw9e\nbxYJqnuJE57BdvdajS/HzWcSNT0DvMFdWBX3qkQVm1+HWCXdK1bZLQlJsO0/eNiY\nDlqcqB95kxrs/LOV4QJBAPUCD0q1FuGrpHGJwliTh3mRcOMNM61DUm0ZutlhDJFa\nT3GJIYGHBVytrb0t8tMPDcWsThSXDwfMsdBc5oST2vcCQQDm/mI2DP2Tme5pHbUC\nughRIVfFIAraqfnncQGtuvonYAmdc+GBJ19bGIt7cbnfc596VIJuS3ei7txm3Rhl\nbQc/AkByE11vWVWoCTTtsEiO2VHwpmk7LkBrYbcVGS/IWslxO+1VXZX+KxGyDyOf\nu68d2hp9eTZ5m8Phy8rWywqBnB4NAkAML0T89uh1XbxOvStsLmX76ZdYpZ0M9cRh\n6fsdr+w8IXvAW3l8t5f3FS9eXpxgZhf2evi6Wq6/4HutzWHZD8w/AkEAtiMOzoS+\nlW7KlVgJRcO49G1mEmgVsaaAgZKCLgVfUzmTWyJokkQYh+i7GMwQCzG5/NQK0cuW\nYhLo3wbQIKO/Sg==\n-----END PRIVATE KEY-----\n"
+    let key = crypto::rsa_parse_private_key(crypto::pem_to_der(pem1024, "PRIVATE KEY"))
+    runner_assert_str_eq(r, key["error"], "", "rsa key parses")
+    let msg = crypto::str_to_bytes("sign-me")
+    let sg2 = crypto::rsa_sign_pkcs1v15(key, "sha256", msg)
+    runner_assert_str_eq(r, sg2["error"], "", "rsa sign ok")
+    runner_assert_eq(r, len(sg2["signature"]), 128, "rsa sig length")
+    let n1024 = key["n"]
+    runner_assert_eq(r, crypto::rsa_verify(n1024, key["e"], "sha256", msg, sg2["signature"]), 1, "rsa sign verifies")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

@@ -1,0 +1,720 @@
+## # secp256r1 (NIST P-256) Field Arithmetic and Elliptic-Curve Operations
+##
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+## Pure-Alya Weierstrass curve over 16-bit limbs (little-endian): field
+## reduction uses the FIPS 186-4 fast Reduction, points use Jacobian
+## coordinates (single inversion per scalar multiply), scalars use
+## double-and-add. Powers `p256_ecdh`, `p256_keygen`, and ECDSA.
+
+import "../math/bigint.alya"
+import "../hashes/sha256.alya"
+import "../encodings/hex.alya"
+import "../random/entropy.alya"
+
+## Field prime p limbs (16-bit, little-endian).
+function _p256_p() -> array
+    return [65535, 65535, 65535, 65535, 65535, 65535, 0, 0, 0, 0, 0, 0, 1, 0, 65535, 65535]
+end
+
+## Curve constant b limbs (16-bit, little-endian).
+function _p256_b() -> array
+    return [24651, 10194, 15422, 15310, 45302, 52307, 1712, 25885, 34492, 30360, 48469, 46059, 37863, 43578, 13784, 23238]
+end
+
+## Base point x limbs.
+pub function _p256_gx() -> array
+    return [49814, 55448, 14661, 62625, 13216, 11755, 32129, 30467, 16626, 25508, 59109, 63676, 16967, 57644, 53746, 27415]
+end
+
+## Base point y limbs.
+pub function _p256_gy() -> array
+    return [20981, 14271, 16488, 52150, 24270, 27441, 13143, 11214, 40470, 31759, 60234, 36583, 32667, 65050, 17122, 20451]
+end
+
+## Group order n as big-endian bytes.
+function _p256_n_bytes() -> array
+    return hex_to_bytes("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551")
+end
+
+## Propagates base-2^16 carries with signed floor division (exact).
+## Negative limbs occur in subtraction where P has zero words.
+pub function _p256_carry(a) -> array
+    let v = []
+    let i = 0
+    while i < len(a)
+        v.push(a[i])
+        i += 1
+    end
+    i = 0
+    while i + 1 < len(v)
+        let m = v[i]
+        let q = 0
+        if m >= 0
+            q = bit_shr(m, 16)
+        else
+            q = 0 - bit_shr((0 - m) + 65535, 16)
+        end
+        v[i] = m - q * 65536
+        v[i + 1] = v[i + 1] + q
+        i += 1
+    end
+    return v
+end
+
+## Fully reduces limbs below p (canonical output for add/sub).
+function _p256_norm(a) -> array
+    let v = _p256_carry(a)
+    let p = _p256_p()
+    let guard = 0
+    while guard < 8
+        let ge = 1
+        let i = 15
+        while i >= 0
+            let x = 0
+            if i < len(v)
+                x = v[i]
+            end
+            if x < p[i]
+                ge = 0
+                break
+            end
+            if x > p[i]
+                break
+            end
+            i -= 1
+        end
+        if ge == 0
+            break
+        end
+        let borrow = 0
+        i = 0
+        while i < 16
+            let cur = v[i] - p[i] - borrow
+            if cur < 0
+                v[i] = cur + 65536
+                borrow = 1
+            else
+                v[i] = cur
+                borrow = 0
+            end
+            i += 1
+        end
+        guard += 1
+    end
+    return v
+end
+
+## Adds two field elements (fully reduced).
+pub function _p256_add(a, b) -> array
+    let out = []
+    let i = 0
+    while i < 16
+        let x = 0
+        if i < len(a)
+            x = a[i]
+        end
+        let y = 0
+        if i < len(b)
+            y = b[i]
+        end
+        out.push(x + y)
+        i += 1
+    end
+    return _p256_norm(out)
+end
+
+## Subtracts b from a (fully reduced, 2p offset keeps limbs non-negative).
+pub function _p256_sub(a, b) -> array
+    let p = _p256_p()
+    let out = []
+    let i = 0
+    while i < 16
+        let x = 0
+        if i < len(a)
+            x = a[i]
+        end
+        let y = 0
+        if i < len(b)
+            y = b[i]
+        end
+        out.push(x + 2 * p[i] - y)
+        i += 1
+    end
+    return _p256_norm(out)
+end
+
+## Schoolbook 16x16 product into 32 limbs.
+pub function _p256_wide(a, b) -> array
+    let t = []
+    let i = 0
+    while i < 32
+        t.push(0)
+        i += 1
+    end
+    i = 0
+    while i < 16
+        let x = 0
+        if i < len(a)
+            x = a[i]
+        end
+        let j = 0
+        while j < 16
+            let y = 0
+            if j < len(b)
+                y = b[j]
+            end
+            t[i + j] = t[i + j] + x * y
+            j += 1
+        end
+        i += 1
+    end
+    return t
+end
+
+## Propagates base-2^32 carries over possibly-negative words (exact).
+pub function _p256_carry32(w, n: int) -> array
+    let i = 0
+    while i + 1 < n
+        let m = w[i]
+        let q = 0
+        if m >= 0
+            q = bit_shr(m, 32)
+        else
+            q = 0 - bit_shr((0 - m) + 4294967295, 32)
+        end
+        w[i] = m - q * 4294967296
+        w[i + 1] = w[i + 1] + q
+        i += 1
+    end
+    return w
+end
+
+## Reduces a 32-limb product modulo p (FIPS 186-4 fast reduction).
+## Returns fully reduced limbs below p.
+pub function _p256_reduce(t) -> array
+    let w = []
+    let i = 0
+    while i < 16
+        let lo = 0
+        let hi = 0
+        if 2 * i < len(t)
+            lo = t[2 * i]
+        end
+        if 2 * i + 1 < len(t)
+            hi = t[2 * i + 1]
+        end
+        w.push(lo + 65536 * hi)
+        i += 1
+    end
+    i = 0
+    while i < 15
+        let carry = bit_shr(w[i], 32)
+        w[i] = bit_and(w[i], 4294967295)
+        w[i + 1] = w[i + 1] + carry
+        i += 1
+    end
+    let c0 = bit_and(w[0], 4294967295)
+    let c1 = bit_and(w[1], 4294967295)
+    let c2 = bit_and(w[2], 4294967295)
+    let c3 = bit_and(w[3], 4294967295)
+    let c4 = bit_and(w[4], 4294967295)
+    let c5 = bit_and(w[5], 4294967295)
+    let c6 = bit_and(w[6], 4294967295)
+    let c7 = bit_and(w[7], 4294967295)
+    let c8 = bit_and(w[8], 4294967295)
+    let c9 = bit_and(w[9], 4294967295)
+    let c10 = bit_and(w[10], 4294967295)
+    let c11 = bit_and(w[11], 4294967295)
+    let c12 = bit_and(w[12], 4294967295)
+    let c13 = bit_and(w[13], 4294967295)
+    let c14 = bit_and(w[14], 4294967295)
+    let c15 = w[15]
+    let p = _p256_p()
+    let pw = []
+    i = 0
+    while i < 8
+        pw.push(p[2 * i] + 65536 * p[2 * i + 1])
+        i += 1
+    end
+    let r = []
+    r.push(c0 + c8 + c9 - c11 - c12 - c13 - c14 + 5 * pw[0])
+    r.push(c1 + c9 + c10 - c12 - c13 - c14 - c15 + 5 * pw[1])
+    r.push(c2 + c10 + c11 - c13 - c14 - c15 + 5 * pw[2])
+    r.push(c3 + 2 * c11 + 2 * c12 + c13 - c15 - c8 - c9 + 5 * pw[3])
+    r.push(c4 + 2 * c12 + 2 * c13 + c14 - c9 - c10 + 5 * pw[4])
+    r.push(c5 + 2 * c13 + 2 * c14 + c15 - c10 - c11 + 5 * pw[5])
+    r.push(c6 + c13 + 3 * c14 + 2 * c15 - c8 - c9 + 5 * pw[6])
+    r.push(c7 + 3 * c15 + c8 - c10 - c11 - c12 - c13 + 5 * pw[7])
+    r = _p256_carry32(r, 8)
+    let guard = 0
+    while guard < 24
+        let ge = 1
+        i = 7
+        while i >= 0
+            if r[i] < pw[i]
+                ge = 0
+                break
+            end
+            if r[i] > pw[i]
+                break
+            end
+            i -= 1
+        end
+        if ge == 0
+            break
+        end
+        let borrow = 0
+        i = 0
+        while i < 8
+            let cur = r[i] - pw[i] - borrow
+            if cur < 0
+                r[i] = cur + 4294967296
+                borrow = 1
+            else
+                r[i] = cur
+                borrow = 0
+            end
+            i += 1
+        end
+        guard += 1
+    end
+    let out = []
+    i = 0
+    while i < 8
+        out.push(bit_and(r[i], 65535))
+        out.push(bit_shr(r[i], 16))
+        i += 1
+    end
+    return out
+end
+
+## Multiplies two field elements (fully reduced).
+pub function _p256_mul(a, b) -> array
+    return _p256_reduce(_p256_wide(a, b))
+end
+
+## Squares a field element (fully reduced).
+pub function _p256_sq(a) -> array
+    return _p256_reduce(_p256_wide(a, a))
+end
+
+## Converts 32 big-endian bytes to field limbs (input must be below p).
+pub function _p256_from_bytes(be) -> array
+    let out = []
+    let i = 0
+    while i < 16
+        let hi = 0
+        let lo = 0
+        if 30 - 2 * i < len(be)
+            hi = be[30 - 2 * i]
+        end
+        if 31 - 2 * i < len(be)
+            lo = be[31 - 2 * i]
+        end
+        out.push(hi * 256 + lo)
+        i += 1
+    end
+    return out
+end
+
+## Converts field limbs to 32 big-endian bytes (reduces below p first).
+pub function _p256_to_bytes(a) -> array
+    let v = _p256_carry(a)
+    let p = _p256_p()
+    let guard = 0
+    while guard < 8
+        let ge = 1
+        let i = 15
+        while i >= 0
+            let x = 0
+            if i < len(v)
+                x = v[i]
+            end
+            if x < p[i]
+                ge = 0
+                break
+            end
+            if x > p[i]
+                break
+            end
+            i -= 1
+        end
+        if ge == 0
+            break
+        end
+        let borrow = 0
+        i = 0
+        while i < 16
+            let cur = v[i] - p[i] - borrow
+            if cur < 0
+                v[i] = cur + 65536
+                borrow = 1
+            else
+                v[i] = cur
+                borrow = 0
+            end
+            i += 1
+        end
+        guard += 1
+    end
+    let out = []
+    let i = 15
+    while i >= 0
+        out.push(bit_shr(v[i], 8))
+        out.push(bit_and(v[i], 255))
+        i -= 1
+    end
+    return out
+end
+
+## Returns 1 when limbs encode zero (fully reduced inputs).
+pub function _p256_is_zero(a) -> int
+    let b = _p256_to_bytes(a)
+    let i = 0
+    while i < len(b)
+        if b[i] != 0
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+## Returns 1 when two field elements are equal.
+pub function _p256_eq(a, b) -> int
+    let x = _p256_to_bytes(a)
+    let y = _p256_to_bytes(b)
+    let i = 0
+    while i < 32
+        if x[i] != y[i]
+            return 0
+        end
+        i += 1
+    end
+    return 1
+end
+
+## Raises a field element to a 32-byte big-endian exponent.
+pub function _p256_pow(a, exp_be) -> array
+    let one = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let res = one
+    let i = 0
+    while i < len(exp_be)
+        let b = 7
+        while b >= 0
+            res = _p256_sq(res)
+            if bit_and(bit_shr(exp_be[i], b), 1) == 1
+                res = _p256_mul(res, a)
+            end
+            b -= 1
+        end
+        i += 1
+    end
+    return res
+end
+
+## Inverts a nonzero field element (Fermat, a^(p-2)).
+pub function _p256_inv(a) -> array
+    let p = _p256_p()
+    let e = _p256_to_bytes(_p256_sub(_p256_sub(p, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+    return _p256_pow(a, e)
+end
+
+## Jacobian point double (a = -3).
+pub function _p256_dbl(x, y, z) -> map
+    let xx = _p256_sq(x)
+    let yy = _p256_sq(y)
+    let yyyy = _p256_sq(yy)
+    let zz = _p256_sq(z)
+    let s = _p256_sub(_p256_sq(_p256_add(x, yy)), _p256_add(xx, yyyy))
+    s = _p256_add(s, s)
+    let m = _p256_sub(xx, _p256_sq(zz))
+    m = _p256_add(_p256_add(m, m), m)
+    let t = _p256_sub(_p256_sq(m), _p256_add(s, s))
+    let x3 = t
+    let y3 = _p256_sub(_p256_mul(m, _p256_sub(s, t)), _p256_add(_p256_add(_p256_add(yyyy, yyyy), _p256_add(yyyy, yyyy)), _p256_add(_p256_add(yyyy, yyyy), _p256_add(yyyy, yyyy))))
+    let z3 = _p256_sub(_p256_sq(_p256_add(y, z)), _p256_add(yy, zz))
+    return { "x": x3, "y": y3, "z": z3 }
+end
+
+## Jacobian point addition (handles identity with z == 0).
+function _p256_add_pt(x1, y1, z1, x2, y2, z2) -> map
+    if _p256_is_zero(z1) == 1
+        return { "x": x2, "y": y2, "z": z2 }
+    end
+    if _p256_is_zero(z2) == 1
+        return { "x": x1, "y": y1, "z": z1 }
+    end
+    let z1z1 = _p256_sq(z1)
+    let z2z2 = _p256_sq(z2)
+    let u1 = _p256_mul(x1, z2z2)
+    let u2 = _p256_mul(x2, z1z1)
+    let t1 = _p256_mul(y1, _p256_mul(z2, z2z2))
+    let t2 = _p256_mul(y2, _p256_mul(z1, z1z1))
+    let h = _p256_sub(u2, u1)
+    if _p256_is_zero(h) == 1
+        if _p256_eq(t1, t2) == 1
+            return _p256_dbl(x1, y1, z1)
+        end
+        return { "x": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "y": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "z": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+    end
+    let hh = _p256_sq(_p256_add(h, h))
+    let j = _p256_mul(h, hh)
+    let r = _p256_sub(t2, t1)
+    r = _p256_add(r, r)
+    let v = _p256_mul(u1, hh)
+    let x3 = _p256_sub(_p256_sub(_p256_sq(r), j), _p256_add(v, v))
+    let y3 = _p256_sub(_p256_mul(r, _p256_sub(v, x3)), _p256_mul(_p256_add(t1, t1), j))
+    let z3 = _p256_mul(_p256_sub(_p256_sq(_p256_add(z1, z2)), _p256_add(z1z1, z2z2)), h)
+    return { "x": x3, "y": y3, "z": z3 }
+end
+
+## Scalar-multiplies a Jacobian point by 32 big-endian scalar bytes.
+function _p256_mult_raw(k_be, x, y, z) -> map
+    let zero = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let rx = zero
+    let ry = zero
+    let rz = zero
+    let started = 0
+    let i = 0
+    while i < len(k_be)
+        let b = 7
+        while b >= 0
+            if started == 1
+                let d = _p256_dbl(rx, ry, rz)
+                rx = d["x"]
+                ry = d["y"]
+                rz = d["z"]
+            end
+            if bit_and(bit_shr(k_be[i], b), 1) == 1
+                if started == 0
+                    rx = x
+                    ry = y
+                    rz = z
+                    started = 1
+                else
+                    let s = _p256_add_pt(rx, ry, rz, x, y, z)
+                    rx = s["x"]
+                    ry = s["y"]
+                    rz = s["z"]
+                end
+            end
+            b -= 1
+        end
+        i += 1
+    end
+    return { "x": rx, "y": ry, "z": rz }
+end
+
+## Converts a Jacobian point to affine limbs (null on identity).
+function _p256_to_affine(pt)
+    if _p256_is_zero(pt["z"]) == 1
+        return null
+    end
+    let zinv = _p256_inv(pt["z"])
+    let zinv2 = _p256_sq(zinv)
+    let x = _p256_mul(pt["x"], zinv2)
+    let y = _p256_mul(pt["y"], _p256_mul(zinv, zinv2))
+    return { "x": x, "y": y }
+end
+
+## Scalar-multiplies the base point (affine result, null on zero scalar).
+pub function _p256_base_mult(k_be)
+    let one = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let r = _p256_mult_raw(k_be, _p256_gx(), _p256_gy(), one)
+    return _p256_to_affine(r)
+end
+
+## Copies limb array element-wise (defensive: isolates caller storage).
+function _p256_dup(a) -> array
+    let out = []
+    let i = 0
+    while i < len(a)
+        out.push(a[i])
+        i += 1
+    end
+    return out
+end
+
+## Scalar-multiplies an affine point given as limbs.
+pub function _p256_point_mult(k_be, px, py)
+    let one = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let r = _p256_mult_raw(_p256_dup(k_be), _p256_dup(px), _p256_dup(py), one)
+    return _p256_to_affine(r)
+end
+
+## Adds two uncompressed points (empty array acts as identity).
+##
+## ### Returns
+## 65-byte sum, or empty array on identity/invalid input.
+pub function p256_point_add(a65, b65) -> array
+    if a65 is null or len(a65) == 0
+        if b65 is null or len(b65) == 0
+            return []
+        end
+        return _p256_dup(b65)
+    end
+    if b65 is null or len(b65) == 0
+        return _p256_dup(a65)
+    end
+    let pa = p256_point_decode(_p256_dup(a65))
+    if pa["error"] != ""
+        return []
+    end
+    let pb = p256_point_decode(_p256_dup(b65))
+    if pb["error"] != ""
+        return []
+    end
+    let one = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let s = _p256_add_pt(pa["x"], pa["y"], _p256_dup(one), pb["x"], pb["y"], _p256_dup(one))
+    let aff = _p256_to_affine(s)
+    if aff is null
+        return []
+    end
+    return p256_point_encode(aff["x"], aff["y"])
+end
+
+## Compares big-endian byte arrays (1 gt, -1 lt, 0 eq).
+pub function _p256_cmp_be(a, b) -> int
+    let n = len(a)
+    if len(b) > n
+        n = len(b)
+    end
+    let i = 0
+    while i < n
+        let x = 0
+        if i < len(a)
+            x = a[i]
+        end
+        let y = 0
+        if i < len(b)
+            y = b[i]
+        end
+        if x > y
+            return 1
+        end
+        if x < y
+            return -1
+        end
+        i += 1
+    end
+    return 0
+end
+
+## Decodes an uncompressed point (65 bytes, 0x04 prefix) with on-curve check.
+##
+## ### Returns
+## Map with `x`, `y` limbs and `error` fields.
+pub function p256_point_decode(pt) -> map
+    let fail = { "x": [], "y": [], "error": "invalid point encoding" }
+    if pt is null or len(pt) != 65 or pt[0] != 4
+        return fail
+    end
+    let xb = []
+    let yb = []
+    let i = 1
+    while i < 33
+        xb.push(pt[i])
+        i += 1
+    end
+    while i < 65
+        yb.push(pt[i])
+        i += 1
+    end
+    let pbytes = hex_to_bytes("FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF")
+    if _p256_cmp_be(xb, pbytes) >= 0 or _p256_cmp_be(yb, pbytes) >= 0
+        return { "x": [], "y": [], "error": "point coordinates out of range" }
+    end
+    let x = _p256_from_bytes(xb)
+    let y = _p256_from_bytes(yb)
+    let lhs = _p256_sq(y)
+    let x2 = _p256_sq(x)
+    let x3 = _p256_mul(x2, x)
+    let rhs = _p256_add(_p256_sub(_p256_add(x3, _p256_b()), _p256_add(x, _p256_add(x, x))), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    if _p256_eq(lhs, rhs) == 0
+        return { "x": [], "y": [], "error": "point not on curve" }
+    end
+    return { "x": x, "y": y, "error": "" }
+end
+
+## Encodes affine limbs as an uncompressed point.
+pub function p256_point_encode(x, y) -> array
+    let out = [4]
+    let xb = _p256_to_bytes(x)
+    let yb = _p256_to_bytes(y)
+    let i = 0
+    while i < len(xb)
+        out.push(xb[i])
+        i += 1
+    end
+    i = 0
+    while i < len(yb)
+        out.push(yb[i])
+        i += 1
+    end
+    return out
+end
+
+## Derives the uncompressed public point for a 32-byte private scalar.
+##
+## ### Returns
+## 65-byte point, or empty array for out-of-range input.
+pub function p256_pub_from_priv(priv) -> array
+    if priv is null or len(priv) != 32
+        return []
+    end
+    let n = _p256_n_bytes()
+    if _p256_cmp_be(priv, [0]) <= 0 or _p256_cmp_be(priv, n) >= 0
+        return []
+    end
+    let pt = _p256_base_mult(priv)
+    if pt is null
+        return []
+    end
+    return p256_point_encode(pt["x"], pt["y"])
+end
+
+## Generates a fresh P-256 keypair.
+##
+## ### Returns
+## Map with `priv` (32 bytes) and `pub` (65 bytes) fields.
+pub function p256_keygen() -> map
+    let n = _p256_n_bytes()
+    while 1
+        let priv = random_bytes(32)
+        if _p256_cmp_be(priv, [0]) > 0 and _p256_cmp_be(priv, n) < 0
+            let pubkey = p256_pub_from_priv(priv)
+            if len(pubkey) == 65
+                return { "priv": priv, "pub": pubkey }
+            end
+        end
+    end
+end
+
+## Computes the ECDH shared secret (x-coordinate, 32 bytes).
+##
+## ### Parameters
+## - `priv`: Local 32-byte private scalar.
+## - `peer_pub`: Peer 65-byte uncompressed point.
+##
+## ### Returns
+## Map with `secret` and `error` fields.
+pub function p256_ecdh(priv, peer_pub) -> map
+    let fail = { "secret": [], "error": "ECDH failed" }
+    if priv is null or len(priv) != 32
+        return fail
+    end
+    let n = _p256_n_bytes()
+    if _p256_cmp_be(priv, [0]) <= 0 or _p256_cmp_be(priv, n) >= 0
+        return { "secret": [], "error": "private scalar out of range" }
+    end
+    let pt = p256_point_decode(peer_pub)
+    if pt["error"] != ""
+        return { "secret": [], "error": pt["error"] }
+    end
+    let shared = _p256_point_mult(priv, pt["x"], pt["y"])
+    if shared is null
+        return { "secret": [], "error": "shared point at infinity" }
+    end
+    return { "secret": _p256_to_bytes(shared["x"]), "error": "" }
+end

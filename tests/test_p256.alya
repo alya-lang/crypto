@@ -1,0 +1,78 @@
+## Test suite for secp256r1 (NIST P-256) field, point, and ECDH operations.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+import "std/test"
+import "../src/lib.alya" as crypto
+
+function x_bytes(pt) -> array
+    let xb = []
+    let i = 1
+    while i < 33
+        xb.push(pt[i])
+        i += 1
+    end
+    return xb
+end
+
+function main()
+    test_suite("P-256 Tests")
+    let r = runner_new()
+
+    # 1. Field multiply vector (Python reference).
+    let fa = crypto::hex_to_bytes("6c80ad74d336e3532481e1032b87f124c002d61afd0841a99ec20eb785afca17")
+    let fb = crypto::hex_to_bytes("1469b37ecc301bb4751a07acb914f8e4a3ce2688b609fd9b76634cb6ac5cc90e")
+    let m = crypto::_p256_to_bytes(crypto::_p256_mul(crypto::_p256_from_bytes(fa), crypto::_p256_from_bytes(fb)))
+    runner_assert_str_eq(r, crypto::bytes_to_hex(m), "2abde307f74820514ba72ca925a8bd378d071f8ec1f6385358d8b5df720e5c2b", "field mul vector")
+
+    # 2. Field square vector.
+    let sq = crypto::_p256_to_bytes(crypto::_p256_sq(crypto::_p256_from_bytes(fa)))
+    runner_assert_str_eq(r, crypto::bytes_to_hex(sq), "c725eddacd737e197a3b027170aa2e777dde0a88955706959655d8ee24a0bbc3", "field square vector")
+
+    # 3. priv=1 derives the base point.
+    let one = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    let g = crypto::p256_pub_from_priv(one)
+    runner_assert_eq(r, len(g), 65, "base point length")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(x_bytes(g)), "6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296", "base point x")
+
+    # 4. Small multiples.
+    let two = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]
+    runner_assert_str_eq(r, crypto::bytes_to_hex(x_bytes(crypto::p256_pub_from_priv(two))), "7cf27b188d034f7e8a52380304b51ac3c08969e277f21b35a60b48fc47669978", "2G x")
+
+    # 5. ECDH agreement and vector.
+    let apriv = crypto::hex_to_bytes("06b9d3dad2e1b8c1c05b985c4e5d4942d4e5cd4b6d5b6d6546bec651d6840b28")
+    let bpriv = crypto::hex_to_bytes("000000003f49f6d4a0adc644f497963d6829da98bee974d0c2d9b65d5bdc5d39")
+    let apub = crypto::p256_pub_from_priv(apriv)
+    let bpub = crypto::p256_pub_from_priv(bpriv)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(x_bytes(apub)), "9c4e37f4a3a7fe9b80b39fbf03ca887cd100fa97f2b71b9a16498988576521d3", "A pub x")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(x_bytes(bpub)), "aba444c178f2295d8dda7033fb083421201f7db697b82e32bcf849f935b3143a", "B pub x")
+    let za = crypto::p256_ecdh(apriv, bpub)
+    runner_assert_str_eq(r, za["error"], "", "ecdh ok")
+    runner_assert_str_eq(r, crypto::bytes_to_hex(za["secret"]), "26a7034a0daba433f411a31972f5bac52d75b0a9fda560bc27cbcb663f03468c", "ecdh vector")
+    let zb = crypto::p256_ecdh(bpriv, apub)
+    runner_assert_str_eq(r, crypto::bytes_to_hex(zb["secret"]), crypto::bytes_to_hex(za["secret"]), "ecdh agreement")
+
+    # 6. Decode rejects bad input.
+    let bad_len = crypto::p256_point_decode([4, 1, 2])
+    runner_assert_true(r, bad_len["error"] != "", "short point rejected")
+    let not_curve = [4]
+    let ni = 0
+    while ni < 64
+        not_curve.push(1)
+        ni += 1
+    end
+    let nc = crypto::p256_point_decode(not_curve)
+    runner_assert_true(r, nc["error"] != "", "off-curve point rejected")
+
+    # 7. Keygen roundtrip.
+    let kg = crypto::p256_keygen()
+    runner_assert_eq(r, len(kg["priv"]), 32, "keygen priv length")
+    runner_assert_eq(r, len(kg["pub"]), 65, "keygen pub length")
+    let rt = crypto::p256_pub_from_priv(kg["priv"])
+    runner_assert_str_eq(r, crypto::bytes_to_hex(rt), crypto::bytes_to_hex(kg["pub"]), "keygen roundtrip")
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

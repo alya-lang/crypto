@@ -30,7 +30,9 @@ import "./ciphers/aes.alya"
 import "./ciphers/aesgcm.alya"
 import "./math/bigint.alya"
 import "./sign/rsa.alya"
+import "./sign/ecdsa.alya"
 import "./kex/x25519.alya"
+import "./kex/p256.alya"
 import "./random/entropy.alya"
 
 ## Computes a cryptographic hash of a text string using the specified algorithm.

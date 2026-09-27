@@ -620,6 +620,56 @@ pub function rsa_decrypt_crt_bytes(key, ct) -> map
     return { "plaintext": pt, "error": "" }
 end
 
+## Signs a message with RSA PKCS#1 v1.5 (type-1) padding.
+##
+## Used for TLS ServerKeyExchange signatures. Deterministic for a given
+## key and message (no random padding involved).
+##
+## # Arguments
+## * `key` - Parsed private key map from `rsa_parse_private_key`.
+## * `algo` - Hash name (`"sha256"`, `"sha384"`, `"sha512"`).
+## * `msg` - Message byte array to sign.
+##
+## # Returns
+## Map with `signature` (modulus-length bytes) and `error` fields.
+pub function rsa_sign_pkcs1v15(key, algo: string, msg) -> map
+    let fail = { "signature": [], "error": "RSA signing failed" }
+    if key is null or msg is null
+        return fail
+    end
+    if len(key["n"]) < 64 or len(key["p"]) == 0 or len(key["q"]) == 0 or len(key["dp"]) == 0 or len(key["dq"]) == 0 or len(key["qinv"]) == 0
+        return fail
+    end
+    let prefix = rsa_digest_prefix(algo)
+    if len(prefix) == 0
+        return fail
+    end
+    let digest = rsa_hash(algo, msg)
+    let k = len(key["n"])
+    if len(digest) + len(prefix) + 11 > k
+        return fail
+    end
+    let em = [0, 1]
+    let i = 0
+    while i < k - len(digest) - len(prefix) - 3
+        em.push(255)
+        i += 1
+    end
+    em.push(0)
+    i = 0
+    while i < len(prefix)
+        em.push(prefix[i])
+        i += 1
+    end
+    i = 0
+    while i < len(digest)
+        em.push(digest[i])
+        i += 1
+    end
+    let m = rsa_decrypt_crt(bi_from_bytes(em), key["p"], key["q"], key["dp"], key["dq"], key["qinv"], key["n"])
+    return { "signature": bi_to_bytes(m, k), "error": "" }
+end
+
 ## Verifies a certificate signature against an issuer public key.
 ##
 ## Supports sha256/sha384/sha512 with RSA (`sha256WithRSAEncryption`
