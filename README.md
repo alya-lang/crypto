@@ -110,6 +110,28 @@ alya add crypto --git https://github.com/alya-lang/crypto --branch main
 alya install
 ```
 
+### Package Features
+
+| Feature | Default | Description |
+|:---|:---:|:---|
+| `rand` | ✅ | Randomness (`Lib/rand`): `random_bytes`/`random_hex`, password hashing, `p256_keygen`, `ecdsa_sign_hash`. |
+| `math` | ✅ | Big-integer math (`Lib/math`): `rsa_*`, `ecdsa_*` verify/parse/sign. |
+
+Without `rand`, password hashing, keygen, and ECDSA signing are unavailable (ECDSA verify/parse and all P-256 arithmetic still work with `math`). Without `math`, RSA/ECDSA disappear; hashes, ciphers, MACs, KDFs, encodings, P-256 arithmetic, and X25519 always work.
+
+```bash
+# Full build (default)
+alya install
+alya test
+
+# Slim build (hashes, ciphers, MACs, KDFs, X25519 only)
+alya install --no-default-features
+alya test --no-default-features
+
+# Any subset also works, e.g. randomness without big math
+alya test --no-default-features --features rand
+```
+
 ---
 
 ## 🚀 Quick Start

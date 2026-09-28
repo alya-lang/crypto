@@ -14,6 +14,7 @@ function leaf_cert_pem() -> string
     return "-----BEGIN CERTIFICATE-----\nMIIDFDCCAfygAwIBAgIUbpcF/6wifnCjm5xm0Gji4/3tx5UwDQYJKoZIhvcNAQEL\nBQAwFDESMBAGA1UEAwwJdGVzdC1yb290MB4XDTI2MDkyNjIxMzQwNFoXDTI2MDky\nODIxMzQwNFowFzEVMBMGA1UEAwwMbGVhZi5leGFtcGxlMIIBIjANBgkqhkiG9w0B\nAQEFAAOCAQ8AMIIBCgKCAQEArrjVQYm14uuYCV096pRtV7FQZGbnAGhGoUx7tRpR\niyW/i5ZK0Ib1mx244O/Z7x93k6GYpRyeThtck1Kpr4ObSthO451yDR+eTE7BbVsF\nlBYqDsE+pI9nhqAc5owrIYjz5NtdFLHYnMJ+bAXrTZ68agrqaKyBJ+m2FgEhNlGm\nv0B4J0v/4XRkxImoQrkAbWE8hzbNU0n+VgoYY/6hKiq+50M2/cMffkDoPrmLe0Y0\n1dkXuK4Nr2Ld+lPhIcsqgTUvhFo0I3rXgNG6Hla2k9SjM2OL1yFOx3qtqzj8xd8q\nXhHcdfhNEzpju7vZhfm2ejhP+OZcTx9yinZ/IUV61MpEJwIDAQABo1swWTAXBgNV\nHREEEDAOggxsZWFmLmV4YW1wbGUwHQYDVR0OBBYEFAoSNfXundhPl3cnE1+CB1k7\n23jsMB8GA1UdIwQYMBaAFIIPfj/nd7dGy9GAYARJ0ibTXoXmMA0GCSqGSIb3DQEB\nCwUAA4IBAQCUN6sviIXyYpTiPRwZD3eRhAyeyrM3Yeb0GhQZ5Mnl8ngE+HsoIinU\nZCZxVJsuR55riTK851/mYq1idIGOEQIIDMkFsHSx1lJ8/jlhilH+bJvX/ntgOjQy\nnabItq0+rIDXhH9sV4kuyY3WpRskrjghHWZXXQ4CplRmvh5PYgDeQkAWny010kzo\nl/rwyEhJtGPTP3PKxW7Y4/SSEN7sYpgcJxaw+H3JM6vOeTNWrUpRotT0o0HYnu0t\na9Z4R2SNdKAxT0Acl7oHUhz0dsscQzghPW6aihbtTKF+ai7cYdR60XQqkffk68ky\nvq0mJdM+DnQHJ0ER3GXGAAPKrmCOb7uD\n-----END CERTIFICATE-----\n"
 end
 
+@cfg(feature = "math")
 function main()
     test_suite("RSA Tests")
     let r = runner_new()
@@ -42,6 +43,18 @@ function main()
     runner_assert_eq(r, crypto::rsa_verify_cert(leaf_der, leaf_key["n"], leaf_key["e"]), 0, "leaf self-signature correctly rejected")
     runner_assert_eq(r, crypto::rsa_verify_cert(leaf_der, key["n"], key["e"]), 0, "wrong issuer key rejected")
 
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+# Without the gated features there is nothing to exercise: register
+# an empty suite so the file still compiles and passes in slim views.
+@cfg(not(feature = "math"))
+function main()
+    test_suite("RSA Tests (skipped without features)")
+    let r = runner_new()
     let failed = runner_summary(r)
     if failed > 0
         exit(1)

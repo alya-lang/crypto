@@ -63,10 +63,15 @@ function main()
     runner_assert_true(r, nc["error"] != "", "off-curve point rejected")
 
     # 7. Keygen roundtrip.
+    @cfg(feature = "rand")
     let kg = crypto::p256_keygen()
+    @cfg(feature = "rand")
     runner_assert_eq(r, len(kg["priv"]), 32, "keygen priv length")
+    @cfg(feature = "rand")
     runner_assert_eq(r, len(kg["pub"]), 65, "keygen pub length")
+    @cfg(feature = "rand")
     let rt = crypto::p256_pub_from_priv(kg["priv"])
+    @cfg(feature = "rand")
     runner_assert_str_eq(r, crypto::bytes_to_hex(rt), crypto::bytes_to_hex(kg["pub"]), "keygen roundtrip")
 
     let failed = runner_summary(r)

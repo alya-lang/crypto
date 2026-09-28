@@ -15,6 +15,7 @@ function priv_pem() -> string
     return "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCpVuTha7AL0otS\nymabLAhAYDEeYfXZR0be/YcUVOHeSUolL+BVuQ+r23lj+u+g9DUOCnXl0tDk1VCC\nqIxNV35ah8RfGRoI1KB1RvvvImI6CqIzjEs4RY6bLExmSakQZ2lj/9ihIUbf9MDM\n56uMHEqO9DDXvp1wTkM8nsC6LkwGpA7Vc/wRHJfzp+0S7fO03H4g98QnZw8hIFcn\nWs30Jlh1ZGtCvOU29/MOCPZ992/XgNL3kkF9ac6rQhscMUrBJfpFe96ag40QTne1\nNZwYLNkmdun3WFg21hIJC36Ifob1gJhhp7vEDheJT9HQ0ludYzzPB0cCh1CAGRFi\ngsmdG3hzAgMBAAECggEAUqfUXmeG7a5eTRH4VWN/v5R0RUVBkEXnRO7xIS5xdWPG\nqjIdSRpkmNku/ms8zg6FWw4mEAD/78JjYvNMUHAVf7DnXBfPimHm1HfKfyYEVhpc\no9al3JivC/Tqcb8go54mZiY6oiOxCZ3ZAetO47vndLGiqZwkEu5QiWVf40C34UEl\nnV5MXoo7cCA+Td0y9LigGJ/pwm39AFCMv/CEVHRdG/1/7ikMd+j5KgOCuKJtGL/5\nXW4Go2A6gAtJHAqFV1E1TVVYAbpAacuQxiIsNnDWnFIsZUpDdag2eOkbJjEYdqlq\nuqtLpLt63ikZR774rVMZhiqIbRK/pK74zduU83sBQQKBgQDVkArqegWzrpoP+/wO\n1hDG1DJdcXnwhl2s0Ev3yS2NjaVbsFwt8AqVnUgRSERSCNIR8eGsidEg6PPywG/3\nf9DUTv+T1apRsdMzh+UeymPyWa0Qw2aYYm5t7/eOdYm2Hffw/A9SNnQczPun7Vr6\nPfp7+LBS1089hTxyQsxwJPNjEwKBgQDK/TXWUreUP1Ok6NIuOWHbag+jwL1virwH\n1REv71iGZhzm1ytrqtqhRZjmVDiSjNHF6qtbAieLeyWEuTryrebLHHxD7Q9xAM0t\njDIJRmnwxSXHP8BJTTWAs2gDo22SckixWgHWitj45+l5tY9/TPTmDlGF7x//AnWh\nWZninrjhIQKBgQCu5Tr7UZjv0NLcuklvQQIWQttISVFKmE+I4kEEmN3Uaib8ks66\n1DVm15qYhK1m3VBkX8moSmlY4U4/BDft4d/8rwGBaV8FbnL/ZZBPCgKWC7i+3Ldd\nnma/Y+FB6qIv4hUWZuaJNo0atQh3OtvhyfYjpsOH5EpBoKajEG9qe+hSvwKBgFgF\n00m8FtVXXKsfNr1Krs+Zv2xwEPWEgKMY1tolfQrSzuefGLoYnbPfXT1L+jg6jmC3\nsVTGq2VFonBabmB73p/nG0/NRavoABEnQS9adGgu5YHweC6RJ4lGwu0I+mPN4Q3f\nDPr+vLW6wzi+7ZnzQiNcxCdDGWnYpC+yjhOCZoNhAoGBAK5ulK5G8e4ZlfQCS8xg\nWBvYlnTiCB1zegpkIWxn8DC69ECTkU6MyKt7UbminV0fgfSPx47tklVeytZEJda/\nh15niEoEUZio0XV0WFyOI130oXLvLhTz4r2Mw1P5N/6USa9ynUK22oK1pO3hlOge\njq/dhVbrTe6nw3C3oxL9nmTt\n-----END PRIVATE KEY-----\n"
 end
 
+@cfg(feature = "math")
 function main()
     test_suite("RSA Private Tests")
     let r = runner_new()
@@ -42,6 +43,18 @@ function main()
     let bad = crypto::rsa_decrypt_bytes(key["n"], key["d"], crypto::hex_to_bytes("00"))
     runner_assert_true(r, bad["error"] != "", "short ciphertext rejected")
 
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+# Without the gated features there is nothing to exercise: register
+# an empty suite so the file still compiles and passes in slim views.
+@cfg(not(feature = "math"))
+function main()
+    test_suite("RSA Private Tests (skipped without features)")
+    let r = runner_new()
     let failed = runner_summary(r)
     if failed > 0
         exit(1)

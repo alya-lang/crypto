@@ -22,16 +22,20 @@ import "./mac/hmac.alya"
 import "./mac/poly1305.alya"
 import "./kdf/pbkdf2.alya"
 import "./kdf/hkdf.alya"
+@cfg(feature = "rand")
 import "./kdf/password.alya"
 import "./ciphers/rc4.alya"
 import "./ciphers/chacha20.alya"
 import "./ciphers/chacha20poly1305.alya"
 import "./ciphers/aes.alya"
 import "./ciphers/aesgcm.alya"
+@cfg(feature = "math")
 import "./sign/rsa.alya"
+@cfg(feature = "math")
 import "./sign/ecdsa.alya"
 import "./kex/x25519.alya"
 import "./kex/p256.alya"
+@cfg(feature = "rand")
 import "./random/entropy.alya"
 
 ## Computes a cryptographic hash of a text string using the specified algorithm.
@@ -175,17 +179,22 @@ end
 
 ## Hashes a password using PBKDF2-HMAC-SHA256 with a random salt.
 ##
+## Requires the `rand` feature (default-on).
+##
 ## # Arguments
 ## * `password` - Plaintext password string.
 ## * `iterations` - Number of iterations (default: 10000).
 ##
 ## # Returns
 ## Encoded password hash record (`pbkdf2_sha256$iterations$salt$hash`).
+@cfg(feature = "rand")
 pub function hash_password(password: str, iterations: int = 10000) -> str
     return password_hash(password, iterations)
 end
 
 ## Verifies a password against a stored hash record in constant time.
+##
+## Requires the `rand` feature (default-on).
 ##
 ## # Arguments
 ## * `password` - Plaintext password to verify.
@@ -193,6 +202,7 @@ end
 ##
 ## # Returns
 ## `true` if valid, `false` otherwise.
+@cfg(feature = "rand")
 pub function verify_password(password: str, hash_record: str) -> bool
     return password_verify(password, hash_record)
 end
@@ -211,22 +221,28 @@ end
 
 ## Generates cryptographically secure random bytes.
 ##
+## Requires the `rand` feature (default-on).
+##
 ## # Arguments
 ## * `count` - Number of bytes to generate.
 ##
 ## # Returns
 ## Array of random byte integers.
+@cfg(feature = "rand")
 pub function secure_random_bytes(count: int) -> array
     return random_bytes(count)
 end
 
 ## Generates a cryptographically secure random hexadecimal string.
 ##
+## Requires the `rand` feature (default-on).
+##
 ## # Arguments
 ## * `byte_count` - Number of random bytes.
 ##
 ## # Returns
 ## Hexadecimal string of length `2 * byte_count`.
+@cfg(feature = "rand")
 pub function secure_random_hex(byte_count: int) -> str
     return random_hex(byte_count)
 end

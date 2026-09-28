@@ -84,7 +84,9 @@ function main()
 
     # 6. Security & Randomness
     say "--- Security & Randomness ---"
+    @cfg(feature = "rand")
     say "Random Hex (16 bytes) : " + crypto::random_hex(16)
+    @cfg(feature = "rand")
     say "Random Bytes (count 8): " + len(crypto::random_bytes(8))
     say "Constant-time check   : " + crypto::constant_time_eq("token_abc", "token_abc")
     say ""

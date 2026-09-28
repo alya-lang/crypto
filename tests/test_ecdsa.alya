@@ -26,6 +26,7 @@ function v_der() -> array
     return crypto::hex_to_bytes("30440220366eecd57c355b8665d0c18e5a3b21ac27da186486aba41cc25c4009052069fa022032c8cc4e07927ac19aee38b979d818059cabd7ec5e5f633c3b9886083a14c0cd")
 end
 
+@cfg(feature = "math")
 function main()
     test_suite("ECDSA Tests")
     let r = runner_new()
@@ -45,8 +46,11 @@ function main()
     runner_assert_eq(r, crypto::ecdsa_verify_hash(v_pub(), v_hash(), bad), 0, "tampered signature rejected")
 
     # 4. Sign roundtrip.
+    @cfg(feature = "rand")
     let sg = crypto::ecdsa_sign_hash(v_priv(), v_hash())
+    @cfg(feature = "rand")
     runner_assert_str_eq(r, sg["error"], "", "sign ok")
+    @cfg(feature = "rand")
     runner_assert_eq(r, crypto::ecdsa_verify_hash(v_pub(), v_hash(), sg["der"]), 1, "own signature verifies")
 
     # 5. SPKI public key parse.
@@ -76,6 +80,18 @@ function main()
     let n1024 = key["n"]
     runner_assert_eq(r, crypto::rsa_verify(n1024, key["e"], "sha256", msg, sg2["signature"]), 1, "rsa sign verifies")
 
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+# Without the gated features there is nothing to exercise: register
+# an empty suite so the file still compiles and passes in slim views.
+@cfg(not(feature = "math"))
+function main()
+    test_suite("ECDSA Tests (skipped without math feature)")
+    let r = runner_new()
     let failed = runner_summary(r)
     if failed > 0
         exit(1)

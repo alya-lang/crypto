@@ -8,6 +8,7 @@
 
 import "../hashes/sha256.alya"
 import "../encodings/hex.alya"
+@cfg(feature = "rand")
 import "../random/entropy.alya"
 
 ## Field prime p limbs (16-bit, little-endian).
@@ -675,8 +676,11 @@ end
 
 ## Generates a fresh P-256 keypair.
 ##
+## Requires the `rand` feature (default-on).
+##
 ## ### Returns
 ## Map with `priv` (32 bytes) and `pub` (65 bytes) fields.
+@cfg(feature = "rand")
 pub function p256_keygen() -> map
     let n = _p256_n_bytes()
     while 1

@@ -1,6 +1,13 @@
 # Symmetric Ciphers & Authenticated Encryption Example
 import "../src/lib.alya" as crypto
 
+# Key generation needs the `rand` feature; without it run the stub.
+@cfg(not(feature = "rand"))
+function main()
+    say "ciphers demo needs the `rand` feature (rebuild with default features)"
+end
+
+@cfg(feature = "rand")
 function main()
     say "=== Alya Symmetric Ciphers & Encrypt-then-MAC Demo ==="
     say ""

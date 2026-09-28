@@ -10,6 +10,7 @@
 import "math" as math
 import "../hashes/sha256.alya"
 import "../encodings/hex.alya"
+@cfg(feature = "rand")
 import "../random/entropy.alya"
 import "../kex/p256.alya"
 import "./rsa.alya"
@@ -204,6 +205,7 @@ end
 ## Signs a 32-byte hash with a P-256 private scalar.
 ##
 ## Uses a fresh random nonce per call. Returns raw scalars plus DER.
+## Requires the `rand` feature (default-on).
 ##
 ## ### Parameters
 ## - `priv`: 32-byte private scalar.
@@ -211,6 +213,7 @@ end
 ##
 ## ### Returns
 ## Map with `r`, `s`, `der`, and `error` fields.
+@cfg(feature = "rand")
 pub function ecdsa_sign_hash(priv, hash32) -> map
     let fail = { "r": [], "s": [], "der": [], "error": "ECDSA signing failed" }
     if priv is null or len(priv) != 32 or hash32 is null or len(hash32) < 32

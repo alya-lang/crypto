@@ -160,9 +160,13 @@ end
 
 function test_poly1305_and_aead(r)
     # --- 17. Random & Entropy ---
+    @cfg(feature = "rand")
     let rnd_bytes = crypto::random_bytes(16)
+    @cfg(feature = "rand")
     runner_assert_eq(r, len(rnd_bytes), 16, "random_bytes count")
+    @cfg(feature = "rand")
     let rnd_hex = crypto::random_hex(16)
+    @cfg(feature = "rand")
     runner_assert_eq(r, len(rnd_hex), 32, "random_hex length")
 
     # --- 18. Poly1305 (RFC 8439) ---
@@ -200,9 +204,13 @@ function test_modern_hashes(r)
     runner_assert_str_eq(r, crypto::keccak_256(""), "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", "keccak_256 empty string vector")
 
     # --- 22. Password Hashing ---
+    @cfg(feature = "rand")
     let my_pwd = "SuperSecretPassword2026!"
+    @cfg(feature = "rand")
     let pwd_hash = crypto::password_hash(my_pwd, 1000)
+    @cfg(feature = "rand")
     runner_assert_eq(r, crypto::password_verify(my_pwd, pwd_hash), 1, "password_verify correct password")
+    @cfg(feature = "rand")
     runner_assert_eq(r, crypto::password_verify("WrongPassword!", pwd_hash), 0, "password_verify wrong password")
 end
 
@@ -253,12 +261,17 @@ function test_facades(r)
     runner_assert_eq(r, crypto::rotate_left_32(1, 4), 16, "crypto::rotate_left_32")
 
     # Unified Facade: random
+    @cfg(feature = "rand")
     runner_assert_eq(r, len(crypto::secure_random_bytes(8)), 8, "crypto::secure_random_bytes")
+    @cfg(feature = "rand")
     runner_assert_eq(r, len(crypto::secure_random_hex(8)), 16, "crypto::secure_random_hex")
 
     # Unified Facade: password
+    @cfg(feature = "rand")
     let u_pwd_hash = crypto::hash_password("AlyaSecret2026", 500)
+    @cfg(feature = "rand")
     runner_assert_eq(r, crypto::verify_password("AlyaSecret2026", u_pwd_hash), 1, "crypto::verify_password true")
+    @cfg(feature = "rand")
     runner_assert_eq(r, crypto::verify_password("WrongPassword", u_pwd_hash), 0, "crypto::verify_password false")
 
     # Unified Facade: stream cipher
