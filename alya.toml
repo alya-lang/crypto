@@ -14,11 +14,6 @@ keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "s
 rand = { git = "https://github.com/alya-lang/rand", tag = "v0.2.0", optional = true }
 math = { git = "https://github.com/alya-lang/math", tag = "v0.4.0", optional = true }
 
-[features]
-default = ["rand", "math"]
-rand = ["rand"]
-math = ["math"]
-
 # [lint]
 # disabled_rules = []
 # exclude = []
@@ -31,3 +26,8 @@ math = ["math"]
 
 # [bench]
 # exclude = []
+
+[features]
+default = ["rand", "math"]
+rand = ["rand"]
+math = ["math"]
