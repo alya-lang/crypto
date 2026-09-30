@@ -11,8 +11,8 @@ repository = "https://github.com/alya-lang/crypto"
 keywords = ["alya", "alya-lang", "package", "crypto", "cryptography", "hash", "sha256", "sha512", "sha3", "keccak", "blake2s", "hmac", "poly1305", "hkdf", "pbkdf2", "aes", "aes-gcm", "gcm", "aead", "chacha20", "rc4", "rsa", "x25519", "base32", "base58"]
 
 [dependencies]
-rand = { git = "https://github.com/alya-lang/rand", tag = "v0.1.0", optional = true }
-math = { git = "https://github.com/alya-lang/math", tag = "v0.1.0", optional = true }
+rand = { git = "https://github.com/alya-lang/rand", tag = "v0.2.0", optional = true }
+math = { git = "https://github.com/alya-lang/math", tag = "v0.4.0", optional = true }
 
 [features]
 default = ["rand", "math"]
