@@ -77,6 +77,10 @@ jobs:
           alya install
 
       - name: Run package test suite
+        env:
+          # Bignum-heavy suites exceed the 60s default on slow runners
+          # (macOS Intel needs ~64s for the RSA CRT suite alone).
+          ALYA_TEST_TIMEOUT_SECS: 180
         run: |
           alya test
 
