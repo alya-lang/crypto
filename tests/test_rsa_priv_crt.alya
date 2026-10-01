@@ -1,8 +1,7 @@
-# RSA private-key parsing and 1024-bit decrypt tests (openssl vectors)
+# RSA 2048-bit CRT decrypt tests (openssl vectors)
 #
-# Parsing and the 1024-bit full decrypt live here; the slower 2048-bit
-# CRT decrypt lives in test_rsa_priv_crt.alya so each suite stays
-# comfortably below the 60s per-suite limit on slow runners.
+# Split out of test_rsa_priv.alya so each suite stays comfortably
+# below the 60s per-suite limit on slow runners.
 import "std/test"
 import "../src/lib.alya" as crypto
 
@@ -15,28 +14,14 @@ function priv_pem() -> string
 end
 @cfg(feature = "math")
 function main()
-    test_suite("RSA Private Tests")
+    test_suite("RSA Private CRT Tests")
     let r = runner_new()
 
     let key = crypto::rsa_parse_private_key(crypto::pem_to_der(priv_pem(), "PRIVATE KEY"))
-    runner_assert_str_eq(r, key["error"], "", "private key parses")
-    runner_assert_eq(r, len(key["n"]), 256, "modulus length")
-    runner_assert_eq(r, key["e"], 65537, "exponent")
-    runner_assert_eq(r, len(key["d"]), 256, "private exponent length")
-    runner_assert_eq(r, len(key["p"]), 128, "prime factor length")
-    runner_assert_eq(r, len(key["qinv"]), 128, "crt coefficient length")
-    runner_assert_eq(r, crypto::rsa_parse_private_key([])["error"] != "", 1, "empty key rejected")
-
-    let k1024 = crypto::rsa_parse_private_key(crypto::pem_to_der(key1024_pem(), "PRIVATE KEY"))
-    runner_assert_str_eq(r, k1024["error"], "", "1024-bit key parses")
-    let ct1024 = crypto::hex_to_bytes("10dd30c566a080cc43176256e29f00779b639464b3f8c8e3722f2738a3f3bc80105d55d8644d3e01e1e91be24def67bd9ea332059f2eff5792be0d516f3697422f9c626fa27b66a34cad6d91302e5dfa90c897325e6406a97e154b0ea532ab98a68a1e127e0f2d6d33619f8fcaa2bb5cfc0012777ab6c1ad23db39171e1ab9db")
-    let dec1024 = crypto::rsa_decrypt_bytes(k1024["n"], k1024["d"], ct1024)
-    runner_assert_str_eq(r, dec1024["error"], "", "1024-bit full decrypt works")
-    runner_assert_str_eq(r, crypto::bytes_to_str(dec1024["plaintext"]), "short-msg", "1024-bit plaintext matches")
-
-    let bad = crypto::rsa_decrypt_bytes(key["n"], key["d"], crypto::hex_to_bytes("00"))
-    runner_assert_true(r, bad["error"] != "", "short ciphertext rejected")
-
+    let ct = crypto::hex_to_bytes("2f5da8cb558366d88d16b0cd1ee43d959efd8d32915cffb8122cb5debd94a51aaa539125f916c5ed64c8c2bdb8466e4dac56c31eaedec333b5e05b803049e73272c8b4bd5aaf1358c8214d4955cdd52d9edbc81e37817013456da320c98d56c7bc4ac0d777e5fbfe179c491e3d146b128b9455164dd4d82924c5e4e408de7d1c33eb9367d531538d9a9c766564765962126842d4b05cfe5b8b32060f23a5ef55c0cbc0d846b768b0c8d800ada449a842837216bf8fd6c3500a97831ca87ee8bf1b22ba9eaa875eb8ce85f80cac5f1688bc193fae5b2d3aae49f949a93597c492ae82bb28079eadb3e033eee7b3ab027d2dc00ed6a572f20b1156a950b00f8780")
+    let crt = crypto::rsa_decrypt_crt_bytes(key, ct)
+    runner_assert_str_eq(r, crt["error"], "", "CRT path decrypts 2048-bit")
+    runner_assert_str_eq(r, crypto::bytes_to_str(crt["plaintext"]), "decrypt-me-please", "CRT plaintext matches")
     let failed = runner_summary(r)
     if failed > 0
         exit(1)
@@ -47,7 +32,7 @@ end
 # an empty suite so the file still compiles and passes in slim views.
 @cfg(not(feature = "math"))
 function main()
-    test_suite("RSA Private Tests (skipped without features)")
+    test_suite("RSA Private CRT Tests (skipped without features)")
     let r = runner_new()
     let failed = runner_summary(r)
     if failed > 0
