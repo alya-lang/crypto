@@ -205,13 +205,9 @@ function test_modern_hashes(r)
     runner_assert_eq(r, len(b2s_keyed), 64, "blake2s_keyed output length")
 
     # --- 21. Modern Hashes: SHA-3 and Keccak (NIST FIPS 202 & Ethereum) ---
-    @cfg(not(target_arch = "x86"))
     runner_assert_str_eq(r, crypto::sha3_256(""), "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a", "sha3_256 empty string vector")
-    @cfg(not(target_arch = "x86"))
     runner_assert_str_eq(r, crypto::sha3_256("abc"), "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532", "sha3_256 'abc' vector")
-    @cfg(not(target_arch = "x86"))
     runner_assert_str_eq(r, crypto::sha3_512(""), "a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26", "sha3_512 empty string vector")
-    @cfg(not(target_arch = "x86"))
     runner_assert_str_eq(r, crypto::keccak_256(""), "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470", "keccak_256 empty string vector")
 
     # --- 22. Password Hashing ---
@@ -246,14 +242,10 @@ function test_facades(r)
     runner_assert_eq(r, cfg.iterations, 10000, "CryptoConfig default iterations")
     runner_assert_eq(r, cfg.key_len, 32, "CryptoConfig default key_len")
 
-    # Unified Facade: hash (needs 64-bit ints, skipped on x86)
-    @cfg(not(target_arch = "x86"))
+    # Unified Facade: hash
     let h_sha256 = crypto::hash("hello", crypto::HashAlgorithm.Sha256)
-    @cfg(not(target_arch = "x86"))
     runner_assert_str_eq(r, h_sha256, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "crypto::hash Sha256")
-    @cfg(not(target_arch = "x86"))
     let h_md5 = crypto::hash("hello", crypto::HashAlgorithm.Md5)
-    @cfg(not(target_arch = "x86"))
     runner_assert_str_eq(r, h_md5, "5d41402abc4b2a76b9719d911017c592", "crypto::hash Md5")
 
     # Unified Facade: encode and decode
@@ -320,15 +312,11 @@ function main()
     let r = runner_new()
 
     test_encodings(r)
-    @cfg(not(target_arch = "x86"))
     test_hashes(r)
-    @cfg(not(target_arch = "x86"))
     test_hmac_vectors(r)
-    @cfg(not(target_arch = "x86"))
     test_kdf_vectors(r)
     test_hmac_and_kdf(r)
     test_ciphers(r)
-    @cfg(not(target_arch = "x86"))
     test_poly1305_vectors(r)
     test_poly1305_and_aead(r)
     test_modern_hashes(r)

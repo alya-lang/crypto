@@ -15,6 +15,29 @@ pub function _u8to32(arr, offset: int) -> int
     return bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
 end
 
+# Multiplies two limbs and accumulates L and H into acc_L and acc_H arrays
+# A is at most 26 bits, B is at most 29 bits.
+# A * B = L + H * 2^26 (safe against 32-bit integer overflow on all architectures)
+function _acc_prod(a: int, b: int, acc_L: array, acc_H: array, idx: int)
+    let a_lo = bit_and(a, 8191)
+    let a_hi = bit_shr(a, 13)
+    let b_lo = bit_and(b, 8191)
+    let b_hi = bit_shr(b, 13)
+
+    let p0 = a_lo * b_lo
+    let p1 = a_hi * b_lo + a_lo * b_hi
+    let p2 = a_hi * b_hi
+
+    let p1_lo = bit_and(p1, 8191)
+    let p1_hi = bit_shr(p1, 13)
+
+    let l = p0 + bit_shl(p1_lo, 13)
+    let h = p2 + p1_hi
+
+    acc_L[idx] = acc_L[idx] + l
+    acc_H[idx] = acc_H[idx] + h
+end
+
 ## Computes 16-byte Poly1305 MAC tag from message byte array using 32-byte key.
 ##
 ## ### Parameters
@@ -62,26 +85,57 @@ pub function poly1305_mac_bytes(msg_bytes, key_bytes) -> array
         h3 += bit_and(bit_shr(_u8to32(msg_bytes, offset + 9), 6), 67108863)
         h4 += bit_or(bit_shr(_u8to32(msg_bytes, offset + 12), 8), 16777216)
 
-        let d0 = h0 * r0 + h1 * s4 + h2 * s3 + h3 * s2 + h4 * s1
-        let d1 = h0 * r1 + h1 * r0 + h2 * s4 + h3 * s3 + h4 * s2
-        let d2 = h0 * r2 + h1 * r1 + h2 * r0 + h3 * s4 + h4 * s3
-        let d3 = h0 * r3 + h1 * r2 + h2 * r1 + h3 * r0 + h4 * s4
-        let d4 = h0 * r4 + h1 * r3 + h2 * r2 + h3 * r1 + h4 * r0
+        let acc_L = [0, 0, 0, 0, 0]
+        let acc_H = [0, 0, 0, 0, 0]
 
-        let c = bit_shr(d0, 26)
-        h0 = bit_and(d0, 67108863)
-        d1 += c
-        c = bit_shr(d1, 26)
-        h1 = bit_and(d1, 67108863)
-        d2 += c
-        c = bit_shr(d2, 26)
-        h2 = bit_and(d2, 67108863)
-        d3 += c
-        c = bit_shr(d3, 26)
-        h3 = bit_and(d3, 67108863)
-        d4 += c
-        c = bit_shr(d4, 26)
-        h4 = bit_and(d4, 67108863)
+        _acc_prod(h0, r0, acc_L, acc_H, 0)
+        _acc_prod(h1, s4, acc_L, acc_H, 0)
+        _acc_prod(h2, s3, acc_L, acc_H, 0)
+        _acc_prod(h3, s2, acc_L, acc_H, 0)
+        _acc_prod(h4, s1, acc_L, acc_H, 0)
+
+        _acc_prod(h0, r1, acc_L, acc_H, 1)
+        _acc_prod(h1, r0, acc_L, acc_H, 1)
+        _acc_prod(h2, s4, acc_L, acc_H, 1)
+        _acc_prod(h3, s3, acc_L, acc_H, 1)
+        _acc_prod(h4, s2, acc_L, acc_H, 1)
+
+        _acc_prod(h0, r2, acc_L, acc_H, 2)
+        _acc_prod(h1, r1, acc_L, acc_H, 2)
+        _acc_prod(h2, r0, acc_L, acc_H, 2)
+        _acc_prod(h3, s4, acc_L, acc_H, 2)
+        _acc_prod(h4, s3, acc_L, acc_H, 2)
+
+        _acc_prod(h0, r3, acc_L, acc_H, 3)
+        _acc_prod(h1, r2, acc_L, acc_H, 3)
+        _acc_prod(h2, r1, acc_L, acc_H, 3)
+        _acc_prod(h3, r0, acc_L, acc_H, 3)
+        _acc_prod(h4, s4, acc_L, acc_H, 3)
+
+        _acc_prod(h0, r4, acc_L, acc_H, 4)
+        _acc_prod(h1, r3, acc_L, acc_H, 4)
+        _acc_prod(h2, r2, acc_L, acc_H, 4)
+        _acc_prod(h3, r1, acc_L, acc_H, 4)
+        _acc_prod(h4, r0, acc_L, acc_H, 4)
+
+        let c = acc_H[0] + bit_shr(acc_L[0], 26)
+        h0 = bit_and(acc_L[0], 67108863)
+
+        let d1_val = acc_L[1] + c
+        c = acc_H[1] + bit_shr(d1_val, 26)
+        h1 = bit_and(d1_val, 67108863)
+
+        let d2_val = acc_L[2] + c
+        c = acc_H[2] + bit_shr(d2_val, 26)
+        h2 = bit_and(d2_val, 67108863)
+
+        let d3_val = acc_L[3] + c
+        c = acc_H[3] + bit_shr(d3_val, 26)
+        h3 = bit_and(d3_val, 67108863)
+
+        let d4_val = acc_L[4] + c
+        c = acc_H[4] + bit_shr(d4_val, 26)
+        h4 = bit_and(d4_val, 67108863)
 
         h0 += c * 5
         c = bit_shr(h0, 26)
@@ -110,26 +164,57 @@ pub function poly1305_mac_bytes(msg_bytes, key_bytes) -> array
         h3 += bit_and(bit_shr(_u8to32(buf, 9), 6), 67108863)
         h4 += bit_shr(_u8to32(buf, 12), 8)
 
-        let d0 = h0 * r0 + h1 * s4 + h2 * s3 + h3 * s2 + h4 * s1
-        let d1 = h0 * r1 + h1 * r0 + h2 * s4 + h3 * s3 + h4 * s2
-        let d2 = h0 * r2 + h1 * r1 + h2 * r0 + h3 * s4 + h4 * s3
-        let d3 = h0 * r3 + h1 * r2 + h2 * r1 + h3 * r0 + h4 * s4
-        let d4 = h0 * r4 + h1 * r3 + h2 * r2 + h3 * r1 + h4 * r0
+        let acc_L = [0, 0, 0, 0, 0]
+        let acc_H = [0, 0, 0, 0, 0]
 
-        let c = bit_shr(d0, 26)
-        h0 = bit_and(d0, 67108863)
-        d1 += c
-        c = bit_shr(d1, 26)
-        h1 = bit_and(d1, 67108863)
-        d2 += c
-        c = bit_shr(d2, 26)
-        h2 = bit_and(d2, 67108863)
-        d3 += c
-        c = bit_shr(d3, 26)
-        h3 = bit_and(d3, 67108863)
-        d4 += c
-        c = bit_shr(d4, 26)
-        h4 = bit_and(d4, 67108863)
+        _acc_prod(h0, r0, acc_L, acc_H, 0)
+        _acc_prod(h1, s4, acc_L, acc_H, 0)
+        _acc_prod(h2, s3, acc_L, acc_H, 0)
+        _acc_prod(h3, s2, acc_L, acc_H, 0)
+        _acc_prod(h4, s1, acc_L, acc_H, 0)
+
+        _acc_prod(h0, r1, acc_L, acc_H, 1)
+        _acc_prod(h1, r0, acc_L, acc_H, 1)
+        _acc_prod(h2, s4, acc_L, acc_H, 1)
+        _acc_prod(h3, s3, acc_L, acc_H, 1)
+        _acc_prod(h4, s2, acc_L, acc_H, 1)
+
+        _acc_prod(h0, r2, acc_L, acc_H, 2)
+        _acc_prod(h1, r1, acc_L, acc_H, 2)
+        _acc_prod(h2, r0, acc_L, acc_H, 2)
+        _acc_prod(h3, s4, acc_L, acc_H, 2)
+        _acc_prod(h4, s3, acc_L, acc_H, 2)
+
+        _acc_prod(h0, r3, acc_L, acc_H, 3)
+        _acc_prod(h1, r2, acc_L, acc_H, 3)
+        _acc_prod(h2, r1, acc_L, acc_H, 3)
+        _acc_prod(h3, r0, acc_L, acc_H, 3)
+        _acc_prod(h4, s4, acc_L, acc_H, 3)
+
+        _acc_prod(h0, r4, acc_L, acc_H, 4)
+        _acc_prod(h1, r3, acc_L, acc_H, 4)
+        _acc_prod(h2, r2, acc_L, acc_H, 4)
+        _acc_prod(h3, r1, acc_L, acc_H, 4)
+        _acc_prod(h4, r0, acc_L, acc_H, 4)
+
+        let c = acc_H[0] + bit_shr(acc_L[0], 26)
+        h0 = bit_and(acc_L[0], 67108863)
+
+        let d1_val = acc_L[1] + c
+        c = acc_H[1] + bit_shr(d1_val, 26)
+        h1 = bit_and(d1_val, 67108863)
+
+        let d2_val = acc_L[2] + c
+        c = acc_H[2] + bit_shr(d2_val, 26)
+        h2 = bit_and(d2_val, 67108863)
+
+        let d3_val = acc_L[3] + c
+        c = acc_H[3] + bit_shr(d3_val, 26)
+        h3 = bit_and(d3_val, 67108863)
+
+        let d4_val = acc_L[4] + c
+        c = acc_H[4] + bit_shr(d4_val, 26)
+        h4 = bit_and(d4_val, 67108863)
 
         h0 += c * 5
         c = bit_shr(h0, 26)
@@ -183,15 +268,25 @@ pub function poly1305_mac_bytes(msg_bytes, key_bytes) -> array
     let out2 = bit_and(bit_or(bit_shr(h2, 12), bit_shl(h3, 14)), 4294967295)
     let out3 = bit_and(bit_or(bit_shr(h3, 18), bit_shl(h4, 8)), 4294967295)
 
-    # mac = (h + pad) % 2^128
-    let f0 = out0 + pad0
-    let f1 = out1 + pad1 + bit_shr(f0, 32)
-    out0 = bit_and(f0, 4294967295)
-    let f2 = out2 + pad2 + bit_shr(f1, 32)
-    out1 = bit_and(f1, 4294967295)
-    let f3 = out3 + pad3 + bit_shr(f2, 32)
-    out2 = bit_and(f2, 4294967295)
-    out3 = bit_and(f3, 4294967295)
+    # mac = (h + pad) % 2^128 using 16-bit safe addition without 32-bit overflow
+    let lo0 = bit_and(out0, 65535) + bit_and(pad0, 65535)
+    let hi0 = bit_shr(out0, 16) + bit_shr(pad0, 16) + bit_shr(lo0, 16)
+    let carry = bit_shr(hi0, 16)
+    out0 = bit_or(bit_and(lo0, 65535), bit_shl(bit_and(hi0, 65535), 16))
+
+    let lo1 = bit_and(out1, 65535) + bit_and(pad1, 65535) + carry
+    let hi1 = bit_shr(out1, 16) + bit_shr(pad1, 16) + bit_shr(lo1, 16)
+    carry = bit_shr(hi1, 16)
+    out1 = bit_or(bit_and(lo1, 65535), bit_shl(bit_and(hi1, 65535), 16))
+
+    let lo2 = bit_and(out2, 65535) + bit_and(pad2, 65535) + carry
+    let hi2 = bit_shr(out2, 16) + bit_shr(pad2, 16) + bit_shr(lo2, 16)
+    carry = bit_shr(hi2, 16)
+    out2 = bit_or(bit_and(lo2, 65535), bit_shl(bit_and(hi2, 65535), 16))
+
+    let lo3 = bit_and(out3, 65535) + bit_and(pad3, 65535) + carry
+    let hi3 = bit_shr(out3, 16) + bit_shr(pad3, 16) + bit_shr(lo3, 16)
+    out3 = bit_or(bit_and(lo3, 65535), bit_shl(bit_and(hi3, 65535), 16))
 
     let mac = []
     mac.push(bit_and(out0, 255))

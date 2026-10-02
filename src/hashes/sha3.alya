@@ -4,17 +4,30 @@
 ## Sponge-construction Keccak-p[1600, 24] permutation hash algorithms.
 
 import "../core/bits.alya"
+import "../core/security.alya"
 import "../encodings/hex.alya"
 
-## Returns the Keccak round constants.
-pub function _get_keccak_rc() -> array
+## Returns the lower 32 bits of Keccak round constants.
+pub function _get_keccak_rc_lo() -> array
     return [
-        u64(0, 1), u64(0, 32898), u64(2147483648, 32906), u64(2147483648, 2147516416),
-        u64(0, 32907), u64(0, 2147483649), u64(2147483648, 2147516545), u64(2147483648, 32777),
-        u64(0, 138), u64(0, 136), u64(0, 2147516425), u64(0, 2147483658),
-        u64(0, 2147516555), u64(2147483648, 139), u64(2147483648, 32905), u64(2147483648, 32771),
-        u64(2147483648, 32770), u64(2147483648, 128), u64(0, 32778), u64(2147483648, 2147483658),
-        u64(2147483648, 2147516545), u64(2147483648, 32896), u64(0, 2147483649), u64(2147483648, 2147516424)
+        1, 32898, 32906, 2147516416,
+        32907, 2147483649, 2147516545, 32777,
+        138, 136, 2147516425, 2147483658,
+        2147516555, 139, 32905, 32771,
+        32770, 128, 32778, 2147483658,
+        2147516545, 32896, 2147483649, 2147516424
+    ]
+end
+
+## Returns the upper 32 bits of Keccak round constants.
+pub function _get_keccak_rc_hi() -> array
+    return [
+        0, 0, 2147483648, 2147483648,
+        0, 0, 2147483648, 2147483648,
+        0, 0, 0, 0,
+        0, 2147483648, 2147483648, 2147483648,
+        2147483648, 2147483648, 0, 2147483648,
+        2147483648, 2147483648, 0, 2147483648
     ]
 end
 
@@ -29,27 +42,54 @@ pub function _get_keccak_r() -> array
     ]
 end
 
-## Applies the Keccak-f[1600] permutation.
-pub function _keccak_f1600(a) -> array
-    let rc = _get_keccak_rc()
+## Performs a 64-bit rotate left across two 32-bit registers (lo, hi).
+pub function _rotl64_split(lo: int, hi: int, n: int) -> array
+    if n == 0
+        return [lo, hi]
+    end
+    if n == 32
+        return [hi, lo]
+    end
+    if n < 32
+        let r_lo = bit_and(bit_or(bit_shl(lo, n), bit_shr(hi, 32 - n)), 4294967295)
+        let r_hi = bit_and(bit_or(bit_shl(hi, n), bit_shr(lo, 32 - n)), 4294967295)
+        return [r_lo, r_hi]
+    end
+    let m = n - 32
+    let r_lo = bit_and(bit_or(bit_shl(hi, m), bit_shr(lo, 32 - m)), 4294967295)
+    let r_hi = bit_and(bit_or(bit_shl(lo, m), bit_shr(hi, 32 - m)), 4294967295)
+    return [r_lo, r_hi]
+end
+
+## Applies the Keccak-f[1600] permutation using dual 32-bit lanes.
+pub function _keccak_f1600(a_lo: array, a_hi: array)
+    let rc_lo = _get_keccak_rc_lo()
+    let rc_hi = _get_keccak_rc_hi()
     let r_table = _get_keccak_r()
 
     let round = 0
     while round < 24
         # 1. Theta
-        let c = []
+        let c_lo = []
+        let c_hi = []
         let x = 0
         while x < 5
-            c.push(bit_xor(bit_xor(bit_xor(bit_xor(a[x], a[x + 5]), a[x + 10]), a[x + 15]), a[x + 20]))
+            let v_lo = bit_xor(bit_xor(bit_xor(bit_xor(a_lo[x], a_lo[x + 5]), a_lo[x + 10]), a_lo[x + 15]), a_lo[x + 20])
+            let v_hi = bit_xor(bit_xor(bit_xor(bit_xor(a_hi[x], a_hi[x + 5]), a_hi[x + 10]), a_hi[x + 15]), a_hi[x + 20])
+            c_lo.push(v_lo)
+            c_hi.push(v_hi)
             x += 1
         end
 
-        let d = []
+        let d_lo = []
+        let d_hi = []
         x = 0
         while x < 5
-            let c_prev = c[(x + 4) % 5]
-            let c_next = rotl64(c[(x + 1) % 5], 1)
-            d.push(bit_xor(c_prev, c_next))
+            let prev_idx = (x + 4) % 5
+            let next_idx = (x + 1) % 5
+            let rot_next = _rotl64_split(c_lo[next_idx], c_hi[next_idx], 1)
+            d_lo.push(bit_xor(c_lo[prev_idx], rot_next[0]))
+            d_hi.push(bit_xor(c_hi[prev_idx], rot_next[1]))
             x += 1
         end
 
@@ -57,17 +97,21 @@ pub function _keccak_f1600(a) -> array
         while x < 5
             let y = 0
             while y < 5
-                a[x + y * 5] = bit_xor(a[x + y * 5], d[x])
+                let idx = x + y * 5
+                a_lo[idx] = bit_xor(a_lo[idx], d_lo[x])
+                a_hi[idx] = bit_xor(a_hi[idx], d_hi[x])
                 y += 1
             end
             x += 1
         end
 
         # 2. Rho and Pi
-        let b = []
+        let b_lo = []
+        let b_hi = []
         let idx = 0
         while idx < 25
-            b.push(0)
+            b_lo.push(0)
+            b_hi.push(0)
             idx += 1
         end
 
@@ -76,10 +120,13 @@ pub function _keccak_f1600(a) -> array
             let y = 0
             while y < 5
                 let rot_amount = r_table[x * 5 + y]
-                let rot_val = rotl64(a[x + y * 5], rot_amount)
+                let src_idx = x + y * 5
+                let rot_val = _rotl64_split(a_lo[src_idx], a_hi[src_idx], rot_amount)
                 let new_x = y
                 let new_y = (2 * x + 3 * y) % 5
-                b[new_x + new_y * 5] = rot_val
+                let dst_idx = new_x + new_y * 5
+                b_lo[dst_idx] = rot_val[0]
+                b_hi[dst_idx] = rot_val[1]
                 y += 1
             end
             x += 1
@@ -90,17 +137,23 @@ pub function _keccak_f1600(a) -> array
         while x < 5
             let y = 0
             while y < 5
-                let b_next1 = b[((x + 1) % 5) + y * 5]
-                let b_next2 = b[((x + 2) % 5) + y * 5]
-                let not_b_next1 = bit_xor(b_next1, -1)
-                a[x + y * 5] = bit_xor(b[x + y * 5], bit_and(not_b_next1, b_next2))
+                let cur_idx = x + y * 5
+                let next1_idx = ((x + 1) % 5) + y * 5
+                let next2_idx = ((x + 2) % 5) + y * 5
+
+                let not_b1_lo = bit_xor(b_lo[next1_idx], 4294967295)
+                let not_b1_hi = bit_xor(b_hi[next1_idx], 4294967295)
+
+                a_lo[cur_idx] = bit_xor(b_lo[cur_idx], bit_and(not_b1_lo, b_lo[next2_idx]))
+                a_hi[cur_idx] = bit_xor(b_hi[cur_idx], bit_and(not_b1_hi, b_hi[next2_idx]))
                 y += 1
             end
             x += 1
         end
 
         # 4. Iota
-        a[0] = bit_xor(a[0], rc[round])
+        a_lo[0] = bit_xor(a_lo[0], rc_lo[round])
+        a_hi[0] = bit_xor(a_hi[0], rc_hi[round])
 
         round += 1
     end
@@ -123,10 +176,12 @@ pub function _sha3_engine(msg_bytes, rate_bytes, suffix: int, out_len: int) -> a
     end
     padded.push(128)
 
-    let a = []
+    let a_lo = []
+    let a_hi = []
     i = 0
     while i < 25
-        a.push(0)
+        a_lo.push(0)
+        a_hi.push(0)
         i += 1
     end
 
@@ -147,15 +202,16 @@ pub function _sha3_engine(msg_bytes, rate_bytes, suffix: int, out_len: int) -> a
 
             let lo = bit_or(bit_or(b0, bit_shl(b1, 8)), bit_or(bit_shl(b2, 16), bit_shl(b3, 24)))
             let hi = bit_or(bit_or(b4, bit_shl(b5, 8)), bit_or(bit_shl(b6, 16), bit_shl(b7, 24)))
-            let word64 = bit_or(lo, bit_shl(hi, 32))
 
             let x = w % 5
             let y = w / 5
-            a[x + y * 5] = bit_xor(a[x + y * 5], word64)
+            let idx = x + y * 5
+            a_lo[idx] = bit_xor(a_lo[idx], lo)
+            a_hi[idx] = bit_xor(a_hi[idx], hi)
             w += 1
         end
 
-        _keccak_f1600(a)
+        _keccak_f1600(a_lo, a_hi)
         offset += rate_bytes
     end
 
@@ -164,12 +220,25 @@ pub function _sha3_engine(msg_bytes, rate_bytes, suffix: int, out_len: int) -> a
     while len(out) < out_len
         let x = w % 5
         let y = w / 5
-        let word64 = a[x + y * 5]
-        let byte_idx = 0
-        while byte_idx < 8 and len(out) < out_len
-            out.push(bit_and(word64, 255))
-            word64 = bit_shr(word64, 8)
-            byte_idx += 1
+        let idx = x + y * 5
+        let lo = a_lo[idx]
+        let hi = a_hi[idx]
+
+        let bytes_word = [
+            bit_and(lo, 255),
+            bit_and(bit_shr(lo, 8), 255),
+            bit_and(bit_shr(lo, 16), 255),
+            bit_and(bit_shr(lo, 24), 255),
+            bit_and(hi, 255),
+            bit_and(bit_shr(hi, 8), 255),
+            bit_and(bit_shr(hi, 16), 255),
+            bit_and(bit_shr(hi, 24), 255)
+        ]
+
+        let b_idx = 0
+        while b_idx < 8 and len(out) < out_len
+            out.push(bytes_word[b_idx])
+            b_idx += 1
         end
         w += 1
     end

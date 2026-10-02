@@ -4,60 +4,147 @@
 ## High-security 512-bit and 384-bit 64-bit word hash algorithms.
 
 import "../core/bits.alya"
+import "../core/security.alya"
 import "../encodings/hex.alya"
 
-## Returns the SHA-512 round constants.
-pub function _sha512_k() -> array
+## Returns the upper 32 bits of SHA-512 round constants.
+pub function _sha512_k_hi() -> array
     return [
-        u64(1116352408, 3609767458), u64(1899447441, 602891725), u64(3049323471, 3964484399), u64(3921009573, 2173295548),
-        u64(961987163, 4081628472), u64(1508970993, 3053834265), u64(2453635748, 2937671579), u64(2870763221, 3664609560),
-        u64(3624381080, 2734883394), u64(310598401, 1164996542), u64(607225278, 1323610764), u64(1426881987, 3590304994),
-        u64(1925078388, 4068182383), u64(2162078206, 991336113), u64(2614888103, 633803317), u64(3248222580, 3479774868),
-        u64(3835390401, 2666613458), u64(4022224774, 944711139), u64(264347078, 2341262773), u64(604807628, 2007800933),
-        u64(770255983, 1495990901), u64(1249150122, 1856431235), u64(1555081692, 3175218132), u64(1996064986, 2198950837),
-        u64(2554220882, 3999719339), u64(2821834349, 766784016), u64(2952996808, 2566594879), u64(3210313671, 3203337956),
-        u64(3336571891, 1034457026), u64(3584528711, 2466948901), u64(113926993, 3758326383), u64(338241895, 168717936),
-        u64(666307205, 1188179964), u64(773529912, 1546045734), u64(1294757372, 1522805485), u64(1396182291, 2643833823),
-        u64(1695183700, 2343527390), u64(1986661051, 1014477480), u64(2177026350, 1206759142), u64(2456956037, 344077627),
-        u64(2730485921, 1290863460), u64(2820302411, 3158454273), u64(3259730800, 3505952657), u64(3345764771, 106217008),
-        u64(3516065817, 3606008344), u64(3600352804, 1432725776), u64(4094571909, 1467031594), u64(275423344, 851169720),
-        u64(430227734, 3100823752), u64(506948616, 1363258195), u64(659060556, 3750685593), u64(883997877, 3785050280),
-        u64(958139571, 3318307427), u64(1322822218, 3812723403), u64(1537002063, 2003034995), u64(1747873779, 3602036899),
-        u64(1955562222, 1575990012), u64(2024104815, 1125592928), u64(2227730452, 2716904306), u64(2361852424, 442776044),
-        u64(2428436474, 593698344), u64(2756734187, 3733110249), u64(3204031479, 2999351573), u64(3329325298, 3815920427),
-        u64(3391569614, 3928383900), u64(3515267271, 566280711), u64(3940187606, 3454069534), u64(4118630271, 4000239992),
-        u64(116418474, 1914138554), u64(174292421, 2731055270), u64(289380356, 3203993006), u64(460393269, 320620315),
-        u64(685471733, 587496836), u64(852142971, 1086792851), u64(1017036298, 365543100), u64(1126000580, 2618297676),
-        u64(1288033470, 3409855158), u64(1501505948, 4234509866), u64(1607167915, 987167468), u64(1816402316, 1246189591)
+        1116352408, 1899447441, 3049323471, 3921009573,
+        961987163, 1508970993, 2453635748, 2870763221,
+        3624381080, 310598401, 607225278, 1426881987,
+        1925078388, 2162078206, 2614888103, 3248222580,
+        3835390401, 4022224774, 264347078, 604807628,
+        770255983, 1249150122, 1555081692, 1996064986,
+        2554220882, 2821834349, 2952996808, 3210313671,
+        3336571891, 3584528711, 113926993, 338241895,
+        666307205, 773529912, 1294757372, 1396182291,
+        1695183700, 1986661051, 2177026350, 2456956037,
+        2730485921, 2820302411, 3259730800, 3345764771,
+        3516065817, 3600352804, 4094571909, 275423344,
+        430227734, 506948616, 659060556, 883997877,
+        958139571, 1322822218, 1537002063, 1747873779,
+        1955562222, 2024104815, 2227730452, 2361852424,
+        2428436474, 2756734187, 3204031479, 3329325298,
+        3391569614, 3515267271, 3940187606, 4118630271,
+        116418474, 174292421, 289380356, 460393269,
+        685471733, 852142971, 1017036298, 1126000580,
+        1288033470, 1501505948, 1607167915, 1816402316
     ]
 end
 
-## Reads a big-endian u64 at an offset.
-pub function _get_u64_be(bytes, offset: int) -> int
-    let hi = bit_or(bit_shl(bytes[offset], 24), bit_shl(bytes[offset + 1], 16))
-    hi = bit_or(hi, bit_shl(bytes[offset + 2], 8))
-    hi = bit_or(hi, bytes[offset + 3])
-
-    let lo = bit_or(bit_shl(bytes[offset + 4], 24), bit_shl(bytes[offset + 5], 16))
-    lo = bit_or(lo, bit_shl(bytes[offset + 6], 8))
-    lo = bit_or(lo, bytes[offset + 7])
-
-    return u64(hi, lo)
+## Returns the lower 32 bits of SHA-512 round constants.
+pub function _sha512_k_lo() -> array
+    return [
+        3609767458, 602891725, 3964484399, 2173295548,
+        4081628472, 3053834265, 2937671579, 3664609560,
+        2734883394, 1164996542, 1323610764, 3590304994,
+        4068182383, 991336113, 633803317, 3479774868,
+        2666613458, 944711139, 2341262773, 2007800933,
+        1495990901, 1856431235, 3175218132, 2198950837,
+        3999719339, 766784016, 2566594879, 3203337956,
+        1034457026, 2466948901, 3758326383, 168717936,
+        1188179964, 1546045734, 1522805485, 2643833823,
+        2343527390, 1014477480, 1206759142, 344077627,
+        1290863460, 3158454273, 3505952657, 106217008,
+        3606008344, 1432725776, 1467031594, 851169720,
+        3100823752, 1363258195, 3750685593, 3785050280,
+        3318307427, 3812723403, 2003034995, 3602036899,
+        1575990012, 1125592928, 2716904306, 442776044,
+        593698344, 3733110249, 2999351573, 3815920427,
+        3928383900, 566280711, 3454069534, 4000239992,
+        1914138554, 2731055270, 3203993006, 320620315,
+        587496836, 1086792851, 365543100, 2618297676,
+        3409855158, 4234509866, 987167468, 1246189591
+    ]
 end
 
-## Appends a value as big-endian u64 bytes.
-pub function _append_u64_bytes(val: int, out)
-    out.push(bit_and(bit_shr(val, 56), 255))
-    out.push(bit_and(bit_shr(val, 48), 255))
-    out.push(bit_and(bit_shr(val, 40), 255))
-    out.push(bit_and(bit_shr(val, 32), 255))
-    out.push(bit_and(bit_shr(val, 24), 255))
-    out.push(bit_and(bit_shr(val, 16), 255))
-    out.push(bit_and(bit_shr(val, 8), 255))
-    out.push(bit_and(val, 255))
+## Rotates a 64-bit word right by n bits across two 32-bit registers.
+pub function _rotr64_split(hi: int, lo: int, n: int) -> array
+    if n == 0
+        return [hi, lo]
+    end
+    if n == 32
+        return [lo, hi]
+    end
+    if n < 32
+        let r_hi = bit_and(bit_or(bit_shr(hi, n), bit_shl(lo, 32 - n)), 4294967295)
+        let r_lo = bit_and(bit_or(bit_shr(lo, n), bit_shl(hi, 32 - n)), 4294967295)
+        return [r_hi, r_lo]
+    end
+    let m = n - 32
+    let r_hi = bit_and(bit_or(bit_shr(lo, m), bit_shl(hi, 32 - m)), 4294967295)
+    let r_lo = bit_and(bit_or(bit_shr(hi, m), bit_shl(lo, 32 - m)), 4294967295)
+    return [r_hi, r_lo]
 end
 
-## Compresses blocks with the SHA-512 transform.
+## Shifts a 64-bit word right by n bits across two 32-bit registers.
+pub function _shr64_split(hi: int, lo: int, n: int) -> array
+    if n == 0
+        return [hi, lo]
+    end
+    if n < 32
+        let r_hi = bit_and(bit_shr(hi, n), 4294967295)
+        let r_lo = bit_and(bit_or(bit_shr(lo, n), bit_shl(hi, 32 - n)), 4294967295)
+        return [r_hi, r_lo]
+    end
+    let m = n - 32
+    let r_lo = bit_and(bit_shr(hi, m), 4294967295)
+    return [0, r_lo]
+end
+
+## Adds two 64-bit words modulo 2^64 using 16-bit safe limbs.
+pub function _add64_2(a_hi: int, a_lo: int, b_hi: int, b_lo: int) -> array
+    let l0 = bit_and(a_lo, 65535) + bit_and(b_lo, 65535)
+    let l1 = bit_shr(a_lo, 16) + bit_shr(b_lo, 16) + bit_shr(l0, 16)
+    let r_lo = bit_or(bit_and(l0, 65535), bit_shl(bit_and(l1, 65535), 16))
+    let carry = bit_shr(l1, 16)
+
+    let h0 = bit_and(a_hi, 65535) + bit_and(b_hi, 65535) + carry
+    let h1 = bit_shr(a_hi, 16) + bit_shr(b_hi, 16) + bit_shr(h0, 16)
+    let r_hi = bit_or(bit_and(h0, 65535), bit_shl(bit_and(h1, 65535), 16))
+    return [r_hi, r_lo]
+end
+
+## Adds four 64-bit words modulo 2^64 using 16-bit safe limbs.
+pub function _add64_4(a_hi: int, a_lo: int, b_hi: int, b_lo: int, c_hi: int, c_lo: int, d_hi: int, d_lo: int) -> array
+    let l0 = bit_and(a_lo, 65535) + bit_and(b_lo, 65535) + bit_and(c_lo, 65535) + bit_and(d_lo, 65535)
+    let l1 = bit_shr(a_lo, 16) + bit_shr(b_lo, 16) + bit_shr(c_lo, 16) + bit_shr(d_lo, 16) + bit_shr(l0, 16)
+    let r_lo = bit_or(bit_and(l0, 65535), bit_shl(bit_and(l1, 65535), 16))
+    let carry = bit_shr(l1, 16)
+
+    let h0 = bit_and(a_hi, 65535) + bit_and(b_hi, 65535) + bit_and(c_hi, 65535) + bit_and(d_hi, 65535) + carry
+    let h1 = bit_shr(a_hi, 16) + bit_shr(b_hi, 16) + bit_shr(c_hi, 16) + bit_shr(d_hi, 16) + bit_shr(h0, 16)
+    let r_hi = bit_or(bit_and(h0, 65535), bit_shl(bit_and(h1, 65535), 16))
+    return [r_hi, r_lo]
+end
+
+## Adds five 64-bit words modulo 2^64 using 16-bit safe limbs.
+pub function _add64_5(a_hi: int, a_lo: int, b_hi: int, b_lo: int, c_hi: int, c_lo: int, d_hi: int, d_lo: int, e_hi: int, e_lo: int) -> array
+    let l0 = bit_and(a_lo, 65535) + bit_and(b_lo, 65535) + bit_and(c_lo, 65535) + bit_and(d_lo, 65535) + bit_and(e_lo, 65535)
+    let l1 = bit_shr(a_lo, 16) + bit_shr(b_lo, 16) + bit_shr(c_lo, 16) + bit_shr(d_lo, 16) + bit_shr(e_lo, 16) + bit_shr(l0, 16)
+    let r_lo = bit_or(bit_and(l0, 65535), bit_shl(bit_and(l1, 65535), 16))
+    let carry = bit_shr(l1, 16)
+
+    let h0 = bit_and(a_hi, 65535) + bit_and(b_hi, 65535) + bit_and(c_hi, 65535) + bit_and(d_hi, 65535) + bit_and(e_hi, 65535) + carry
+    let h1 = bit_shr(a_hi, 16) + bit_shr(b_hi, 16) + bit_shr(c_hi, 16) + bit_shr(d_hi, 16) + bit_shr(e_hi, 16) + bit_shr(h0, 16)
+    let r_hi = bit_or(bit_and(h0, 65535), bit_shl(bit_and(h1, 65535), 16))
+    return [r_hi, r_lo]
+end
+
+## Appends a 64-bit value given by (hi, lo) as 8 big-endian bytes.
+pub function _append_u64_bytes(hi: int, lo: int, out: array)
+    out.push(bit_and(bit_shr(hi, 24), 255))
+    out.push(bit_and(bit_shr(hi, 16), 255))
+    out.push(bit_and(bit_shr(hi, 8), 255))
+    out.push(bit_and(hi, 255))
+    out.push(bit_and(bit_shr(lo, 24), 255))
+    out.push(bit_and(bit_shr(lo, 16), 255))
+    out.push(bit_and(bit_shr(lo, 8), 255))
+    out.push(bit_and(lo, 255))
+end
+
+## Compresses blocks with the SHA-512 / SHA-384 transform.
 pub function _sha512_transform(data_bytes, is_384: int) -> array
     let msg_len = len(data_bytes)
     let total_bits = msg_len * 8
@@ -77,116 +164,180 @@ pub function _sha512_transform(data_bytes, is_384: int) -> array
     end
 
     # Append 128-bit length (upper 64 bits = 0, lower 64 bits = total_bits)
-    let z = 0
-    while z < 8
-        bytes.push(0)
-        z += 1
-    end
-
-    bytes.push(bit_and(bit_shr(total_bits, 56), 255))
-    bytes.push(bit_and(bit_shr(total_bits, 48), 255))
-    bytes.push(bit_and(bit_shr(total_bits, 40), 255))
-    bytes.push(bit_and(bit_shr(total_bits, 32), 255))
-    bytes.push(bit_and(bit_shr(total_bits, 24), 255))
-    bytes.push(bit_and(bit_shr(total_bits, 16), 255))
-    bytes.push(bit_and(bit_shr(total_bits, 8), 255))
-    bytes.push(bit_and(total_bits, 255))
+    _append_u64_bytes(0, 0, bytes)
+    _append_u64_bytes(0, total_bits, bytes)
 
     # 2. Initial hash values
-    let k = _sha512_k()
-    let h0, h1, h2, h3, h4, h5, h6, h7 = 0
+    let k_hi = _sha512_k_hi()
+    let k_lo = _sha512_k_lo()
+
+    let h_hi = []
+    let h_lo = []
     if is_384 == 1
-        h0 = u64(3418070365, 3238371032) # 0xcbbb9d5dc1059ed8
-        h1 = u64(1654270250, 914150663)  # 0x629a292a367cd507
-        h2 = u64(2438529370, 812702999)  # 0x9159015a3070dd17
-        h3 = u64(355462360, 4144912697)  # 0x152fecd8f70e5939
-        h4 = u64(1731405415, 4290775857) # 0x67332667ffc00b31
-        h5 = u64(2394180231, 1750603025) # 0x8eb44a8768581511
-        h6 = u64(3675008525, 1694076839) # 0xdb0c2e0d64f98fa7
-        h7 = u64(1203062813, 3204075428) # 0x47b5481dbefa4fa4
+        h_hi = [3418070365, 1654270250, 2438529370, 355462360, 1731405415, 2394180231, 3675008525, 1203062813]
+        h_lo = [3238371032, 914150663, 812702999, 4144912697, 4290775857, 1750603025, 1694076839, 3204075428]
     else
-        h0 = u64(1779033703, 4089235720) # 0x6a09e667f3bcc908
-        h1 = u64(3144134277, 2227873595) # 0xbb67ae8584caa73b
-        h2 = u64(1013904242, 4271175723) # 0x3c6ef372fe94f82b
-        h3 = u64(2773480762, 1595750129) # 0xa54ff53a5f1d36f1
-        h4 = u64(1359893119, 2917565137) # 0x510e527fade682d1
-        h5 = u64(2600822924, 725511199)  # 0x9b05688c2b3e6c1f
-        h6 = u64(528734635, 4215389547)  # 0x1f83d9abfb41bd6b
-        h7 = u64(1541459225, 327033209)  # 0x5be0cd19137e2179
+        h_hi = [1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225]
+        h_lo = [4089235720, 2227873595, 4271175723, 1595750129, 2917565137, 725511199, 4215389547, 327033209]
     end
 
     # 3. Process each 128-byte chunk
     let chunk_idx = 0
     let total_bytes = len(bytes)
     while chunk_idx < total_bytes
-        let w = []
+        let w_hi = []
+        let w_lo = []
         let j = 0
         while j < 16
-            w.push(_get_u64_be(bytes, chunk_idx + j * 8))
+            let offset = chunk_idx + j * 8
+            let hi = bit_or(bit_shl(bytes[offset], 24), bit_shl(bytes[offset + 1], 16))
+            hi = bit_or(hi, bit_shl(bytes[offset + 2], 8))
+            hi = bit_or(hi, bytes[offset + 3])
+
+            let lo = bit_or(bit_shl(bytes[offset + 4], 24), bit_shl(bytes[offset + 5], 16))
+            lo = bit_or(lo, bit_shl(bytes[offset + 6], 8))
+            lo = bit_or(lo, bytes[offset + 7])
+
+            w_hi.push(hi)
+            w_lo.push(lo)
             j += 1
         end
 
         while j < 80
-            let w2 = w[j - 2]
-            let s1 = bit_xor(rotr64(w2, 19), bit_xor(rotr64(w2, 61), bit_shr(w2, 6)))
-            let w7 = w[j - 7]
-            let w15 = w[j - 15]
-            let s0 = bit_xor(rotr64(w15, 1), bit_xor(rotr64(w15, 8), bit_shr(w15, 7)))
-            let w16 = w[j - 16]
-            w.push(w16 + s0 + w7 + s1)
+            let w2_hi = w_hi[j - 2]
+            let w2_lo = w_lo[j - 2]
+            let r19 = _rotr64_split(w2_hi, w2_lo, 19)
+            let r61 = _rotr64_split(w2_hi, w2_lo, 61)
+            let s6  = _shr64_split(w2_hi, w2_lo, 6)
+            let s1_hi = bit_xor(r19[0], bit_xor(r61[0], s6[0]))
+            let s1_lo = bit_xor(r19[1], bit_xor(r61[1], s6[1]))
+
+            let w15_hi = w_hi[j - 15]
+            let w15_lo = w_lo[j - 15]
+            let r1 = _rotr64_split(w15_hi, w15_lo, 1)
+            let r8 = _rotr64_split(w15_hi, w15_lo, 8)
+            let s7 = _shr64_split(w15_hi, w15_lo, 7)
+            let s0_hi = bit_xor(r1[0], bit_xor(r8[0], s7[0]))
+            let s0_lo = bit_xor(r1[1], bit_xor(r8[1], s7[1]))
+
+            let w16_hi = w_hi[j - 16]
+            let w16_lo = w_lo[j - 16]
+            let w7_hi  = w_hi[j - 7]
+            let w7_lo  = w_lo[j - 7]
+
+            let sum4 = _add64_4(w16_hi, w16_lo, s0_hi, s0_lo, w7_hi, w7_lo, s1_hi, s1_lo)
+            w_hi.push(sum4[0])
+            w_lo.push(sum4[1])
             j += 1
         end
 
-        let a = h0
-        let b = h1
-        let c = h2
-        let d = h3
-        let e = h4
-        let f = h5
-        let g = h6
-        let h = h7
+        let a_hi = h_hi[0]
+        let a_lo = h_lo[0]
+        let b_hi = h_hi[1]
+        let b_lo = h_lo[1]
+        let c_hi = h_hi[2]
+        let c_lo = h_lo[2]
+        let d_hi = h_hi[3]
+        let d_lo = h_lo[3]
+        let e_hi = h_hi[4]
+        let e_lo = h_lo[4]
+        let f_hi = h_hi[5]
+        let f_lo = h_lo[5]
+        let g_hi = h_hi[6]
+        let g_lo = h_lo[6]
+        let h_h7 = h_hi[7]
+        let h_l7 = h_lo[7]
 
         let round = 0
         while round < 80
-            let s1 = bit_xor(rotr64(e, 14), bit_xor(rotr64(e, 18), rotr64(e, 41)))
-            let ch = bit_xor(bit_and(e, f), bit_and(bit_not(e), g))
-            let temp1 = h + s1 + ch + k[round] + w[round]
-            let s0 = bit_xor(rotr64(a, 28), bit_xor(rotr64(a, 34), rotr64(a, 39)))
-            let maj = bit_xor(bit_and(a, b), bit_xor(bit_and(a, c), bit_and(b, c)))
-            let temp2 = s0 + maj
+            let r14 = _rotr64_split(e_hi, e_lo, 14)
+            let r18 = _rotr64_split(e_hi, e_lo, 18)
+            let r41 = _rotr64_split(e_hi, e_lo, 41)
+            let s1_hi = bit_xor(r14[0], bit_xor(r18[0], r41[0]))
+            let s1_lo = bit_xor(r14[1], bit_xor(r18[1], r41[1]))
 
-            h = g
-            g = f
-            f = e
-            e = d + temp1
-            d = c
-            c = b
-            b = a
-            a = temp1 + temp2
+            let not_e_hi = bit_xor(e_hi, 4294967295)
+            let not_e_lo = bit_xor(e_lo, 4294967295)
+            let ch_hi = bit_xor(bit_and(e_hi, f_hi), bit_and(not_e_hi, g_hi))
+            let ch_lo = bit_xor(bit_and(e_lo, f_lo), bit_and(not_e_lo, g_lo))
+
+            let temp1 = _add64_5(h_h7, h_l7, s1_hi, s1_lo, ch_hi, ch_lo, k_hi[round], k_lo[round], w_hi[round], w_lo[round])
+            let t1_hi = temp1[0]
+            let t1_lo = temp1[1]
+
+            let r28 = _rotr64_split(a_hi, a_lo, 28)
+            let r34 = _rotr64_split(a_hi, a_lo, 34)
+            let r39 = _rotr64_split(a_hi, a_lo, 39)
+            let s0_hi = bit_xor(r28[0], bit_xor(r34[0], r39[0]))
+            let s0_lo = bit_xor(r28[1], bit_xor(r34[1], r39[1]))
+
+            let maj_hi = bit_xor(bit_and(a_hi, b_hi), bit_xor(bit_and(a_hi, c_hi), bit_and(b_hi, c_hi)))
+            let maj_lo = bit_xor(bit_and(a_lo, b_lo), bit_xor(bit_and(a_lo, c_lo), bit_and(b_lo, c_lo)))
+
+            let temp2 = _add64_2(s0_hi, s0_lo, maj_hi, maj_lo)
+            let t2_hi = temp2[0]
+            let t2_lo = temp2[1]
+
+            h_h7 = g_hi
+            h_l7 = g_lo
+            g_hi = f_hi
+            g_lo = f_lo
+            f_hi = e_hi
+            f_lo = e_lo
+            let new_e = _add64_2(d_hi, d_lo, t1_hi, t1_lo)
+            e_hi = new_e[0]
+            e_lo = new_e[1]
+            d_hi = c_hi
+            d_lo = c_lo
+            c_hi = b_hi
+            c_lo = b_lo
+            b_hi = a_hi
+            b_lo = a_lo
+            let new_a = _add64_2(t1_hi, t1_lo, t2_hi, t2_lo)
+            a_hi = new_a[0]
+            a_lo = new_a[1]
+
             round += 1
         end
 
-        h0 = h0 + a
-        h1 = h1 + b
-        h2 = h2 + c
-        h3 = h3 + d
-        h4 = h4 + e
-        h5 = h5 + f
-        h6 = h6 + g
-        h7 = h7 + h
+        let s0 = _add64_2(h_hi[0], h_lo[0], a_hi, a_lo)
+        h_hi[0] = s0[0]
+        h_lo[0] = s0[1]
+        let s1 = _add64_2(h_hi[1], h_lo[1], b_hi, b_lo)
+        h_hi[1] = s1[0]
+        h_lo[1] = s1[1]
+        let s2 = _add64_2(h_hi[2], h_lo[2], c_hi, c_lo)
+        h_hi[2] = s2[0]
+        h_lo[2] = s2[1]
+        let s3 = _add64_2(h_hi[3], h_lo[3], d_hi, d_lo)
+        h_hi[3] = s3[0]
+        h_lo[3] = s3[1]
+        let s4 = _add64_2(h_hi[4], h_lo[4], e_hi, e_lo)
+        h_hi[4] = s4[0]
+        h_lo[4] = s4[1]
+        let s5 = _add64_2(h_hi[5], h_lo[5], f_hi, f_lo)
+        h_hi[5] = s5[0]
+        h_lo[5] = s5[1]
+        let s6 = _add64_2(h_hi[6], h_lo[6], g_hi, g_lo)
+        h_hi[6] = s6[0]
+        h_lo[6] = s6[1]
+        let s7 = _add64_2(h_hi[7], h_lo[7], h_h7, h_l7)
+        h_hi[7] = s7[0]
+        h_lo[7] = s7[1]
+
         chunk_idx += 128
     end
 
     let out = []
-    _append_u64_bytes(h0, out)
-    _append_u64_bytes(h1, out)
-    _append_u64_bytes(h2, out)
-    _append_u64_bytes(h3, out)
-    _append_u64_bytes(h4, out)
-    _append_u64_bytes(h5, out)
+    _append_u64_bytes(h_hi[0], h_lo[0], out)
+    _append_u64_bytes(h_hi[1], h_lo[1], out)
+    _append_u64_bytes(h_hi[2], h_lo[2], out)
+    _append_u64_bytes(h_hi[3], h_lo[3], out)
+    _append_u64_bytes(h_hi[4], h_lo[4], out)
+    _append_u64_bytes(h_hi[5], h_lo[5], out)
     if is_384 == 0
-        _append_u64_bytes(h6, out)
-        _append_u64_bytes(h7, out)
+        _append_u64_bytes(h_hi[6], h_lo[6], out)
+        _append_u64_bytes(h_hi[7], h_lo[7], out)
     end
     return out
 end
