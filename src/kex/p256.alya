@@ -8,7 +8,6 @@
 
 import "../hashes/sha256.alya"
 import "../encodings/hex.alya"
-import "math" as math
 @cfg(feature = "rand")
 import "../random/entropy.alya"
 
@@ -290,97 +289,13 @@ pub function _p256_reduce(t) -> array
 end
 
 ## Multiplies two field elements (fully reduced).
-@cfg(not(arch = "x86"))
 pub function _p256_mul(a, b) -> array
     return _p256_reduce(_p256_wide(a, b))
 end
 
-@cfg(arch = "x86")
-function _p256_term(c64, w7: int, w6: int, w5: int, w4: int, w3: int, w2: int, w1: int, w0: int) -> array
-    let bytes = []
-    let words = [w7, w6, w5, w4, w3, w2, w1, w0]
-    let wi = 0
-    while wi < 8
-        let w = words[wi]
-        if w < 0
-            bytes.push(0)
-            bytes.push(0)
-            bytes.push(0)
-            bytes.push(0)
-        else
-            let start = (15 - w) * 4
-            bytes.push(c64[start])
-            bytes.push(c64[start + 1])
-            bytes.push(c64[start + 2])
-            bytes.push(c64[start + 3])
-        end
-        wi += 1
-    end
-    return math::bi_from_bytes(bytes)
-end
-
-@cfg(arch = "x86")
-function _p256_p_bi() -> array
-    return [1073741823, 1073741823, 1073741823, 63, 0, 0, 4096, 1073725440, 65535]
-end
-
-@cfg(arch = "x86")
-function _p256_p4_bi() -> array
-    return [1073741820, 1073741823, 1073741823, 255, 0, 0, 16384, 1073676288, 262143]
-end
-
-@cfg(arch = "x86")
-function _p256_fast_reduce_bytes(c64) -> array
-    let s1 = _p256_term(c64, 7, 6, 5, 4, 3, 2, 1, 0)
-    let s2 = _p256_term(c64, 15, 15, 14, 13, 12, -1, -1, -1)
-    let s3 = _p256_term(c64, -1, 14, 13, 12, 11, -1, -1, -1)
-    let s4 = _p256_term(c64, 15, 14, 15, 14, 13, 11, 10, 9)
-    let s5 = _p256_term(c64, 8, 13, -1, -1, -1, 10, 9, 8)
-
-    let d1 = _p256_term(c64, 10, 8, 10, 9, 15, 13, 12, 11)
-    let d2 = _p256_term(c64, 11, 9, 11, 10, 8, 14, 13, 12)
-    let d3 = _p256_term(c64, 12, -1, -1, -1, 9, 15, 14, 13)
-    let d4 = _p256_term(c64, 13, -1, -1, -1, -1, -1, 15, 14)
-
-    let p = _p256_p_bi()
-    let p4 = _p256_p4_bi()
-
-    let pos = math::bi_add(s1, math::bi_add(s2, s2))
-    pos = math::bi_add(pos, math::bi_add(s3, s3))
-    pos = math::bi_add(pos, s4)
-    pos = math::bi_add(pos, s5)
-    pos = math::bi_add(pos, p4)
-
-    let neg = math::bi_add(math::bi_add(d1, d2), math::bi_add(d3, d4))
-
-    let acc = math::bi_sub(pos, neg)
-    while math::bi_cmp(acc, p) >= 0
-        acc = math::bi_sub(acc, p)
-    end
-    return math::bi_to_bytes(acc, 32)
-end
-
-@cfg(arch = "x86")
-pub function _p256_mul(a, b) -> array
-    let ab = _p256_to_bytes(a)
-    let bb = _p256_to_bytes(b)
-    let bia = math::bi_from_bytes(ab)
-    let bib = math::bi_from_bytes(bb)
-    let prod = math::bi_mul(bia, bib)
-    let c64 = math::bi_to_bytes(prod, 64)
-    let red32 = _p256_fast_reduce_bytes(c64)
-    return _p256_from_bytes(red32)
-end
-
 ## Squares a field element (fully reduced).
-@cfg(not(arch = "x86"))
 pub function _p256_sq(a) -> array
     return _p256_reduce(_p256_wide(a, a))
-end
-
-@cfg(arch = "x86")
-pub function _p256_sq(a) -> array
-    return _p256_mul(a, a)
 end
 
 ## Converts 32 big-endian bytes to field limbs (input must be below p).
