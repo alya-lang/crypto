@@ -23,16 +23,16 @@ pub function base64url_encode_bytes(bytes) -> str
         b0 = bytes[i]
         b1 = 0
         b2 = 0
-        has_b1 = 0
-        has_b2 = 0
+        has_b1 = false
+        has_b2 = false
 
         if i + 1 < blen
             b1 = bytes[i + 1]
-            has_b1 = 1
+            has_b1 = true
         end
         if i + 2 < blen
             b2 = bytes[i + 2]
-            has_b2 = 1
+            has_b2 = true
         end
 
         idx0 = bit_and(bit_shr(b0, 2), 63)
@@ -40,12 +40,12 @@ pub function base64url_encode_bytes(bytes) -> str
 
         res = res + char_at(chars, idx0) + char_at(chars, idx1)
 
-        if has_b1 == 1
+        if has_b1 == true
             idx2 = bit_and(bit_or(bit_shl(bit_and(b1, 15), 2), bit_shr(b2, 6)), 63)
             res = res + char_at(chars, idx2)
         end
 
-        if has_b2 == 1
+        if has_b2 == true
             idx3 = bit_and(b2, 63)
             res = res + char_at(chars, idx3)
         end

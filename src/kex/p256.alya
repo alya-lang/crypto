@@ -373,11 +373,11 @@ pub function _p256_is_zero(a) -> int
     let i = 0
     while i < len(b)
         if b[i] != 0
-            return 0
+            return false
         end
         i += 1
     end
-    return 1
+    return true
 end
 
 ## Returns 1 when two field elements are equal.
@@ -387,11 +387,11 @@ pub function _p256_eq(a, b) -> int
     let i = 0
     while i < 32
         if x[i] != y[i]
-            return 0
+            return false
         end
         i += 1
     end
-    return 1
+    return true
 end
 
 ## Raises a field element to a 32-byte big-endian exponent.
@@ -439,10 +439,10 @@ end
 
 ## Jacobian point addition (handles identity with z == 0).
 function _p256_add_pt(x1, y1, z1, x2, y2, z2) -> map
-    if _p256_is_zero(z1) == 1
+    if _p256_is_zero(z1) == true
         return { "x": x2, "y": y2, "z": z2 }
     end
-    if _p256_is_zero(z2) == 1
+    if _p256_is_zero(z2) == true
         return { "x": x1, "y": y1, "z": z1 }
     end
     let z1z1 = _p256_sq(z1)
@@ -452,8 +452,8 @@ function _p256_add_pt(x1, y1, z1, x2, y2, z2) -> map
     let t1 = _p256_mul(y1, _p256_mul(z2, z2z2))
     let t2 = _p256_mul(y2, _p256_mul(z1, z1z1))
     let h = _p256_sub(u2, u1)
-    if _p256_is_zero(h) == 1
-        if _p256_eq(t1, t2) == 1
+    if _p256_is_zero(h) == true
+        if _p256_eq(t1, t2) == true
             return _p256_dbl(x1, y1, z1)
         end
         return { "x": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "y": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "z": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
@@ -480,14 +480,14 @@ function _p256_mult_raw(k_be, x, y, z) -> map
     while i < len(k_be)
         let b = 7
         while b >= 0
-            if started == 1
+            if started == true
                 let d = _p256_dbl(rx, ry, rz)
                 rx = d["x"]
                 ry = d["y"]
                 rz = d["z"]
             end
             if bit_and(bit_shr(k_be[i], b), 1) == 1
-                if started == 0
+                if started == false
                     rx = x
                     ry = y
                     rz = z
@@ -508,7 +508,7 @@ end
 
 ## Converts a Jacobian point to affine limbs (null on identity).
 function _p256_to_affine(pt)
-    if _p256_is_zero(pt["z"]) == 1
+    if _p256_is_zero(pt["z"]) == true
         return null
     end
     let zinv = _p256_inv(pt["z"])
@@ -631,7 +631,7 @@ pub function p256_point_decode(pt) -> map
     let x2 = _p256_sq(x)
     let x3 = _p256_mul(x2, x)
     let rhs = _p256_add(_p256_sub(_p256_add(x3, _p256_b()), _p256_add(x, _p256_add(x, x))), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    if _p256_eq(lhs, rhs) == 0
+    if _p256_eq(lhs, rhs) == false
         return { "x": [], "y": [], "error": "point not on curve" }
     end
     return { "x": x, "y": y, "error": "" }

@@ -11,7 +11,7 @@
 ##
 ## ### Returns
 ## Encoded Base32 string.
-pub function base32_encode_bytes(bytes, pad: int = 1) -> str
+pub function base32_encode_bytes(bytes, pad: int = true) -> str
     let b32_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
     let blen = len(bytes)
     let res = ""
@@ -54,22 +54,22 @@ pub function base32_encode_bytes(bytes, pad: int = 1) -> str
 
         when count
             is 1 then
-                if pad == 1
+                if pad == true
                     res = res + "======"
                 end
             is 2 then
                 res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3)
-                if pad == 1
+                if pad == true
                     res = res + "===="
                 end
             is 3 then
                 res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4)
-                if pad == 1
+                if pad == true
                     res = res + "==="
                 end
             is 4 then
                 res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6)
-                if pad == 1
+                if pad == true
                     res = res + "="
                 end
             else
@@ -170,17 +170,17 @@ end
 pub function is_base32(s: str) -> int
     let slen = len(s)
     if slen == 0
-        return 1
+        return true
     end
     let i = 0
     while i < slen
         let ch = char_at(s, i)
         if ch != "=" and _b32_val(ch) == 255
-            return 0
+            return false
         end
         i += 1
     end
-    return 1
+    return true
 end
 
 ## Alias for `base32_encode`.

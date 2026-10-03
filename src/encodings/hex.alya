@@ -127,7 +127,7 @@ end
 pub function is_hex(s: str) -> int
     let slen = len(s)
     if slen == 0 or slen % 2 != 0
-        return 0
+        return false
     end
     let i = 0
     while i < slen
@@ -136,9 +136,9 @@ pub function is_hex(s: str) -> int
         let is_l = c >= 97 and c <= 102
         let is_u = c >= 65 and c <= 70
         if not is_d and not is_l and not is_u
-            return 0
+            return false
         end
         i += 1
     end
-    return 1
+    return true
 end

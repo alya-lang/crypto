@@ -37,7 +37,7 @@ function main()
     say "3. Verifying payload integrity..."
     let computed_tag = crypto::hmac_sha256(crypto::bytes_to_hex(hmac_key), ciphertext_hex)
     let is_valid = crypto::constant_time_eq(auth_tag, computed_tag)
-    if is_valid == 1
+    if is_valid == true
         say "   ✓ Authentication tag verified (timing-safe check passed)!"
         let decrypted = crypto::aes_cbc_decrypt(aes_key, aes_iv, ciphertext_hex)
         say "   Decrypted:  " + decrypted

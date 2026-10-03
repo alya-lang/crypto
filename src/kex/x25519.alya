@@ -243,7 +243,7 @@ pub function _f25519_norm(a) -> array
     v[1] = v[1] + c
     let round = 0
     while round < 8
-        if _f25519_ge_p(v) == 0
+        if _f25519_ge_p(v) == false
             break
         end
         v = _f25519_sub_p(v)
@@ -266,14 +266,14 @@ pub function _f25519_ge_p(v) -> int
     let i = 15
     while i >= 0
         if v[i] < p[i]
-            return 0
+            return false
         end
         if v[i] > p[i]
-            return 1
+            return true
         end
         i -= 1
     end
-    return 1
+    return true
 end
 
 ## Subtracts p once from normalized limbs.
@@ -346,7 +346,7 @@ end
 ## * `swap` - `1` to swap, `0` to keep.
 pub function _f25519_cswap(a, b, swap: int)
     let mask = 0
-    if swap == 1
+    if swap == true
         mask = 65535
     end
     let i = 0

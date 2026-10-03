@@ -95,7 +95,7 @@ pub function _sha512_transform(data_bytes, is_384: int) -> array
     # 2. Initial hash values
     let k = _sha512_k()
     let h0, h1, h2, h3, h4, h5, h6, h7 = 0
-    if is_384 == 1
+    if is_384 == true
         h0 = u64(3418070365, 3238371032) # 0xcbbb9d5dc1059ed8
         h1 = u64(1654270250, 914150663)  # 0x629a292a367cd507
         h2 = u64(2438529370, 812702999)  # 0x9159015a3070dd17
@@ -184,7 +184,7 @@ pub function _sha512_transform(data_bytes, is_384: int) -> array
     _append_u64_bytes(h3, out)
     _append_u64_bytes(h4, out)
     _append_u64_bytes(h5, out)
-    if is_384 == 0
+    if is_384 == false
         _append_u64_bytes(h6, out)
         _append_u64_bytes(h7, out)
     end

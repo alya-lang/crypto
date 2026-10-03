@@ -174,17 +174,17 @@ end
 pub function is_base58(s: str) -> int
     let slen = len(s)
     if slen == 0
-        return 1
+        return true
     end
     let i = 0
     while i < slen
         let ch = char_at(s, i)
         if _b58_val(ch) == 255
-            return 0
+            return false
         end
         i += 1
     end
-    return 1
+    return true
 end
 
 ## Alias for `base58_encode`.

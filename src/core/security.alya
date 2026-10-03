@@ -17,7 +17,7 @@ pub function constant_time_eq(a: str, b: str) -> bool
     let alen = len(a)
     let blen = len(b)
     if alen != blen
-        return 0
+        return false
     end
     let diff = 0
     let i = 0
@@ -25,7 +25,7 @@ pub function constant_time_eq(a: str, b: str) -> bool
         diff = bit_or(diff, bit_xor(ord(char_at(a, i)), ord(char_at(b, i))))
         i += 1
     end
-    return diff == 0
+    return diff == false
 end
 
 ## Constant-time byte array equality check.
@@ -42,7 +42,7 @@ pub function constant_time_eq_bytes(a, b) -> bool
     let alen = len(a)
     let blen = len(b)
     if alen != blen
-        return 0
+        return false
     end
     let diff = 0
     let i = 0
@@ -50,5 +50,5 @@ pub function constant_time_eq_bytes(a, b) -> bool
         diff = bit_or(diff, bit_xor(a[i], b[i]))
         i += 1
     end
-    return diff == 0
+    return diff == false
 end

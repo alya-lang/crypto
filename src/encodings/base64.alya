@@ -23,16 +23,16 @@ pub function base64_encode_bytes(bytes) -> str
         b0 = bytes[i]
         b1 = 0
         b2 = 0
-        has_b1 = 0
-        has_b2 = 0
+        has_b1 = false
+        has_b2 = false
 
         if i + 1 < blen
             b1 = bytes[i + 1]
-            has_b1 = 1
+            has_b1 = true
         end
         if i + 2 < blen
             b2 = bytes[i + 2]
-            has_b2 = 1
+            has_b2 = true
         end
 
         idx0 = bit_and(bit_shr(b0, 2), 63)
@@ -41,12 +41,12 @@ pub function base64_encode_bytes(bytes) -> str
         idx3 = bit_and(b2, 63)
 
         res = res + char_at(b64_chars, idx0) + char_at(b64_chars, idx1)
-        if has_b1 == 1
+        if has_b1 == true
             res = res + char_at(b64_chars, idx2)
         else
             res = res + "="
         end
-        if has_b2 == 1
+        if has_b2 == true
             res = res + char_at(b64_chars, idx3)
         else
             res = res + "="
@@ -158,7 +158,7 @@ end
 pub function is_base64(s: str) -> int
     let slen = len(s)
     if slen == 0 or slen % 4 != 0
-        return 0
+        return false
     end
     let i = 0
     while i < slen
@@ -169,9 +169,9 @@ pub function is_base64(s: str) -> int
         let is_plus_slash = c == 43 or c == 47
         let is_pad = c == 61
         if not is_u and not is_l and not is_d and not is_plus_slash and not is_pad
-            return 0
+            return false
         end
         i += 1
     end
-    return 1
+    return true
 end

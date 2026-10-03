@@ -51,7 +51,7 @@ pub function _sha256_transform(data_bytes, is_224: int) -> array
     # 2. Initialize hash values
     let k = _sha256_k()
     let h0, h1, h2, h3, h4, h5, h6, h7 = 0
-    if is_224 == 1
+    if is_224 == true
         h0 = 3238371032
         h1 = 914150663
         h2 = 812702999
@@ -142,7 +142,7 @@ pub function _sha256_transform(data_bytes, is_224: int) -> array
     let out = []
     let words = [h0, h1, h2, h3, h4, h5, h6, h7]
     let word_count = 8
-    if is_224 == 1
+    if is_224 == true
         word_count = 7
     end
     let wi = 0
