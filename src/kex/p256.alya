@@ -368,7 +368,7 @@ pub function _p256_to_bytes(a) -> array
 end
 
 ## Returns 1 when limbs encode zero (fully reduced inputs).
-pub function _p256_is_zero(a) -> int
+pub function _p256_is_zero(a) -> bool
     let b = _p256_to_bytes(a)
     let i = 0
     while i < len(b)
@@ -381,7 +381,7 @@ pub function _p256_is_zero(a) -> int
 end
 
 ## Returns 1 when two field elements are equal.
-pub function _p256_eq(a, b) -> int
+pub function _p256_eq(a, b) -> bool
     let x = _p256_to_bytes(a)
     let y = _p256_to_bytes(b)
     let i = 0

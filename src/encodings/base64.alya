@@ -155,7 +155,7 @@ end
 ##
 ## ### Returns
 ## `1` if valid Base64, `0` otherwise.
-pub function is_base64(s: str) -> int
+pub function is_base64(s: str) -> bool
     let slen = len(s)
     if slen == 0 or slen % 4 != 0
         return false

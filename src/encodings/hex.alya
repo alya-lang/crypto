@@ -124,7 +124,7 @@ end
 ##
 ## ### Returns
 ## `1` if valid hex, `0` otherwise.
-pub function is_hex(s: str) -> int
+pub function is_hex(s: str) -> bool
     let slen = len(s)
     if slen == 0 or slen % 2 != 0
         return false

@@ -261,7 +261,7 @@ end
 ##
 ## # Returns
 ## `1` when `v >= p`, `0` otherwise.
-pub function _f25519_ge_p(v) -> int
+pub function _f25519_ge_p(v) -> bool
     let p = [65517, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
     let i = 15
     while i >= 0

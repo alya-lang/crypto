@@ -336,7 +336,7 @@ end
 ##
 ## # Returns
 ## `1` on valid signature, `0` otherwise.
-pub function rsa_verify(n_bytes, e: int, algo: string, msg, sig) -> int
+pub function rsa_verify(n_bytes, e: int, algo: string, msg, sig) -> bool
     if n_bytes is null or len(n_bytes) < 64 or e <= 1
         return false
     end

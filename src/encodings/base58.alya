@@ -171,7 +171,7 @@ end
 ##
 ## ### Returns
 ## `1` if valid Base58, `0` otherwise.
-pub function is_base58(s: str) -> int
+pub function is_base58(s: str) -> bool
     let slen = len(s)
     if slen == 0
         return true

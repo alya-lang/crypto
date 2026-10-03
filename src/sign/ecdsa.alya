@@ -264,7 +264,7 @@ end
 ##
 ## ### Returns
 ## `1` on valid signature, `0` otherwise.
-pub function ecdsa_verify_hash(pub65, hash32, sig_der) -> int
+pub function ecdsa_verify_hash(pub65, hash32, sig_der) -> bool
     if pub65 is null or len(pub65) != 65 or hash32 is null or len(hash32) < 32
         return false
     end
@@ -391,7 +391,7 @@ function _ecdsa_oid_at(data, pos: int) -> map
 end
 
 ## Compares two byte arrays for equality.
-function _ecdsa_bytes_eq(a, b) -> int
+function _ecdsa_bytes_eq(a, b) -> bool
     if a is null or b is null or len(a) != len(b)
         return false
     end
