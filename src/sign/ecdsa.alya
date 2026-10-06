@@ -146,7 +146,7 @@ pub function ecdsa_sig_parse_der(sig) -> map
         r.push(sig[pos + 2 + i])
         i += 1
     end
-    pos = pos + 2 + rlen
+    pos += 2 + rlen
     if pos + 2 > len(sig) or sig[pos] != 2
         return fail
     end

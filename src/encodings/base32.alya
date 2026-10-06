@@ -50,30 +50,30 @@ pub function base32_encode_bytes(bytes, pad: int = true) -> str
         let c6 = bit_and(bit_or(bit_shl(bit_and(b3, 3), 3), bit_shr(b4, 5)), 31)
         let c7 = bit_and(b4, 31)
 
-        res = res + char_at(b32_chars, c0) + char_at(b32_chars, c1)
+        res += char_at(b32_chars, c0) + char_at(b32_chars, c1)
 
         when count
             is 1 then
                 if pad == true
-                    res = res + "======"
+                    res += "======"
                 end
             is 2 then
-                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3)
+                res += char_at(b32_chars, c2) + char_at(b32_chars, c3)
                 if pad == true
-                    res = res + "===="
+                    res += "===="
                 end
             is 3 then
-                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4)
+                res += char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4)
                 if pad == true
-                    res = res + "==="
+                    res += "==="
                 end
             is 4 then
-                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6)
+                res += char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6)
                 if pad == true
-                    res = res + "="
+                    res += "="
                 end
             else
-                res = res + char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6) + char_at(b32_chars, c7)
+                res += char_at(b32_chars, c2) + char_at(b32_chars, c3) + char_at(b32_chars, c4) + char_at(b32_chars, c5) + char_at(b32_chars, c6) + char_at(b32_chars, c7)
         end
         i += 5
     end
@@ -154,7 +154,7 @@ pub function base32_decode(s: str) -> str
     let blen = len(bytes)
     let i = 0
     while i < blen
-        res = res + chr(bytes[i])
+        res += chr(bytes[i])
         i += 1
     end
     return res

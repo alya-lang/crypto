@@ -33,12 +33,12 @@ pub function base58_encode_bytes(bytes) -> str
         while j < dlen
             carry += bit_shl(digits[j], 8)
             digits[j] = carry % 58
-            carry = carry / 58
+            carry /= 58
             j += 1
         end
         while carry > 0
             digits.push(carry % 58)
-            carry = carry / 58
+            carry /= 58
         end
         i += 1
     end
@@ -46,13 +46,13 @@ pub function base58_encode_bytes(bytes) -> str
     let res = ""
     let z = 0
     while z < zeroes
-        res = res + "1"
+        res += "1"
         z += 1
     end
 
     let k = len(digits) - 1
     while k >= 0
-        res = res + char_at(b58_chars, digits[k])
+        res += char_at(b58_chars, digits[k])
         k -= 1
     end
     return res
@@ -158,7 +158,7 @@ pub function base58_decode(s: str) -> str
     let blen = len(bytes)
     let i = 0
     while i < blen
-        res = res + chr(bytes[i])
+        res += chr(bytes[i])
         i += 1
     end
     return res

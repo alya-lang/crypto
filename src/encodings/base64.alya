@@ -40,16 +40,16 @@ pub function base64_encode_bytes(bytes) -> str
         idx2 = bit_and(bit_or(bit_shl(bit_and(b1, 15), 2), bit_shr(b2, 6)), 63)
         idx3 = bit_and(b2, 63)
 
-        res = res + char_at(b64_chars, idx0) + char_at(b64_chars, idx1)
+        res += char_at(b64_chars, idx0) + char_at(b64_chars, idx1)
         if has_b1 == true
-            res = res + char_at(b64_chars, idx2)
+            res += char_at(b64_chars, idx2)
         else
-            res = res + "="
+            res += "="
         end
         if has_b2 == true
-            res = res + char_at(b64_chars, idx3)
+            res += char_at(b64_chars, idx3)
         else
-            res = res + "="
+            res += "="
         end
         i += 3
     end
@@ -142,7 +142,7 @@ pub function base64_decode(s: str) -> str
     let res = ""
     let i = 0
     while i < blen
-        res = res + chr(bytes[i])
+        res += chr(bytes[i])
         i += 1
     end
     return res

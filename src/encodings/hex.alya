@@ -33,7 +33,7 @@ pub function bytes_to_str(bytes) -> str
     let res = ""
     let i = 0
     while i < blen
-        res = res + chr(bytes[i])
+        res += chr(bytes[i])
         i += 1
     end
     return res
@@ -55,7 +55,7 @@ pub function bytes_to_hex(bytes) -> str
         let b = bytes[i]
         let hi = bit_and(bit_shr(b, 4), 15)
         let lo = bit_and(b, 15)
-        res = res + char_at(hex_chars, hi) + char_at(hex_chars, lo)
+        res += char_at(hex_chars, hi) + char_at(hex_chars, lo)
         i += 1
     end
     return res
