@@ -124,7 +124,7 @@ pub function rsa_tlv_at(data, pos: int) -> map
     let length = 0
     let i = 0
     while i < octets
-        length *= 256 + data[pos + 2 + i]
+        length = length * 256 + data[pos + 2 + i]
         i += 1
     end
     return { "tag": tag, "length": length, "header_len": 2 + octets, "total_len": 2 + octets + length, "error": "" }
@@ -278,7 +278,7 @@ pub function rsa_try_pubkey_at(der, hit: int) -> map
     let e = 0
     let k = 0
     while k < len(ei["bytes"])
-        e *= 256 + ei["bytes"][k]
+        e = e * 256 + ei["bytes"][k]
         k += 1
     end
     if e <= 1 or len(ni["bytes"]) < 64
@@ -496,7 +496,7 @@ pub function rsa_parse_private_key(der) -> map
     let e = 0
     let k = 0
     while k < len(ei["bytes"])
-        e *= 256 + ei["bytes"][k]
+        e = e * 256 + ei["bytes"][k]
         k += 1
     end
     if e <= 1
